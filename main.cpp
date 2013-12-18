@@ -113,8 +113,8 @@ int main(int argc, char* argv[]){
   Matrix rdm = coefs * coefs.t();
   vector<double> occ(norbs, 1.);
 
-  SchmidtBasis left(coefs, occ, thr1p);
-
+  SchmidtBasis lbasis(coefs, occ, thr1p);
+  cout << lbasis << endl;
   for (int site = 0; site < nsites-1; ++site) {
 
   }

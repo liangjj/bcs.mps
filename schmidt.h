@@ -19,6 +19,8 @@ private:
 public:
   SchmidtBasis(const Matrix& _core, const Matrix& _active): core(_core), active(_active) {};
   SchmidtBasis(const Matrix&, const vector<double>&, double);
+  friend std::ostream& operator <<(std::ostream&, const SchmidtBasis&);
+
 };
 
 
