@@ -22,15 +22,22 @@ using std::ifstream;
 namespace btas { typedef SpinQuantum Quantum; }; // Defined as default quantum number class
 
 const string mps_dir = "/home/boxiao/mps/mps.out";
+const string temp_dir = "/scratch/gpfs/boxiao/MPSTemp";
 
 using namespace btas;
 using namespace mpsxx;
 
-int read_input(char* file, vector<int>& order, Matrix*& orbs) {
+void permute(Matrix& orbs, vector<int>& order) {
+  Matrix orbs_i = orbs;
+  for (int i = 0; i < order.size(); ++i) {
+    orbs.Row(i+1) = orbs_i.Row(order[i]);
+  }
+}
+
+Matrix read_input(char* file) {
   string line;
   ifstream in(file);
   istringstream is(line);
-
   std::getline(in, line);  // the first line is an explanation of the file.
     
   int nsites, norbs;
@@ -38,6 +45,8 @@ int read_input(char* file, vector<int>& order, Matrix*& orbs) {
   is.str(line);
   is >> nsites >> norbs;
   std::getline(in, line);
+  
+  vector<int> order;
   if (line.compare("default") == 0) {
     for (int i = 0; i < nsites; ++i) {
       order.push_back(i+1);
@@ -52,35 +61,25 @@ int read_input(char* file, vector<int>& order, Matrix*& orbs) {
     }
     assert(order.size() == nsites);
   }
-
-  orbs = new Matrix(nsites, norbs);
+  Matrix orbs(nsites, norbs);
   double temp;
   for (int i = 0; i < norbs; i++) {
     for (int j = 0; j < nsites; j++) {
       in >> temp;
-      (*orbs)(j+1, i+1) = temp;
+      orbs(j+1, i+1) = temp;
     }
   }
-  return 0;
+  permute(orbs, order);
+  return std::move(orbs);
 }
 
-string mktmpdir(string prefix) {
+string mktmpdir(const string& prefix) {
   char* temp = new char[prefix.size() + 11];
   std::strcpy(temp, (prefix + "/tmpXXXXXX").c_str());
   mkdtemp(temp);
   // create this folder
-  cout << temp << endl;
+  cout << "MPS Temporary Directory " << temp << endl;
   return string(temp);
-}
-
-void permute(Matrix*& orbs, vector<int>& order) {
-  Matrix* orbs_i = orbs;
-  orbs = new Matrix();
-  orbs -> ReSize(*orbs_i);
-  for (int i = 0; i < order.size(); ++i) {
-    orbs -> Row(i+1) = orbs_i -> Row(order[i]);
-  }
-  delete orbs_i;
 }
 
 void banner() {
@@ -88,7 +87,7 @@ void banner() {
   cout << "                           G P S - M P S                               \n";
   cout << "   (Gutzwiller Projection of Single Slater Determinants through MPS)   \n\n";
   cout << "                           Bo-Xiao Zheng                               \n";
-  cout << "-----------------------------------------------------------------------\n";
+  cout << "-----------------------------------------------------------------------\n\n";
 }
 
 int main(int argc, char* argv[]){
@@ -105,20 +104,24 @@ int main(int argc, char* argv[]){
     M = atoi(argv[3]);
   }
   banner();
+  string mps_temp = mktmpdir(temp_dir);
+  // read input file
+  Matrix coefs = read_input(argv[1]);
+  int nsites = coef.Nrows();
+  int norbs = coef.Ncols();
+  // density matrix
+  Matrix rdm = coefs * coefs.t();
+
+  for (int site = 0; site < nsites-1; ++site) {
+
+  }
+
+
+
+  boost::filesystem::path to_remove(mps_temp);
+  boost::filesystem::remove_all(to_remove);
 
   /*
-
-  assert(argc > 2);
-  int M = atoi(argv[2]);
-  cout << "M = " << M << "\n";
-  string mps_temp = mktmpdir("/scratch/gpfs/boxiao/MPSTemp");
-  // read input file
-  // include eigenvectors (only RHF: number of sites, number of electrons per spin)
-  // site order
-  vector<int> order;
-  Matrix* orbs;
-  read_input(argv[1], order, orbs);
-  permute(orbs, order);
   // creat the first Slater determinant object (whole system)
   vector<int> sites;
   for (int i = 0; i < (*orbs).Nrows(); ++i) {
@@ -240,8 +243,5 @@ int main(int argc, char* argv[]){
   }
   ofs.close();
   *
-  boost::filesystem::path to_remove(mps_temp);
-  boost::filesystem::remove_all(to_remove);
-  return 0;
   */
 }
