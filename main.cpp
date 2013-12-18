@@ -7,7 +7,7 @@
 #include <omp.h>
 
 #include "include.h"
-#include "SlaterDet.h"
+#include "schmidt.h"
 #include "newmat10/newmatap.h"
 #include "newmat10/newmatio.h"
 #include "mps_op.h"
@@ -107,10 +107,13 @@ int main(int argc, char* argv[]){
   string mps_temp = mktmpdir(temp_dir);
   // read input file
   Matrix coefs = read_input(argv[1]);
-  int nsites = coef.Nrows();
-  int norbs = coef.Ncols();
+  int nsites = coefs.Nrows();
+  int norbs = coefs.Ncols();
   // density matrix
   Matrix rdm = coefs * coefs.t();
+  vector<double> occ(norbs, 1.);
+
+  SchmidtBasis left(coefs, occ, thr1p);
 
   for (int site = 0; site < nsites-1; ++site) {
 
