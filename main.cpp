@@ -90,12 +90,22 @@ void banner() {
   cout << "-----------------------------------------------------------------------\n\n";
 }
 
+void natural_orbs(const SymmetricMatrix& rdm, vector<double>& occs, Matrix& orbs) {
+  occs.clear();
+  DiagonalMatrix D;
+  Jacobi(rdm, D, orbs);
+  for (int i = 0; i < D.Nrows(); ++i) {
+    occs.push_back(D(i+1, i+1));
+  }
+}
+
 int main(int argc, char* argv[]){
   cout.setf(std::ios::fixed, std::ios::floatfield);
   cout.precision(10);
 
   assert(argc > 1);
   double thr1p = pow(10., -7.);
+  double thrnp = pow(10., -8.);
   int M = 1000;
   if (argc > 2) {
     thr1p = pow(10., -atoi(argv[2]));
@@ -110,13 +120,21 @@ int main(int argc, char* argv[]){
   int nsites = coefs.Nrows();
   int norbs = coefs.Ncols();
   // density matrix
-  Matrix rdm = coefs * coefs.t();
-  vector<double> occ(norbs, 1.);
+  SymmetricMatrix rdm;
+  rdm << coefs * coefs.t();
+  vector<double> occs(norbs, 1.);
+  SchmidtBasis lbasis(coefs, occs, thr1p, thrnp);
 
-  SchmidtBasis lbasis(coefs, occ, thr1p);
-  cout << lbasis << endl;
   for (int site = 0; site < nsites-1; ++site) {
-
+    // first build right basis
+    SymmetricMatrix prdm;
+    prdm << rdm.SubMatrix(site+2, nsites, site+2, nsites);
+    Matrix natorbs;
+    natural_orbs(prdm, occs, natorbs);
+    SchmidtBasis rbasis(natorbs, occs, thr1p, thrnp);
+    cout << site+1 << endl;
+    //cout << rbasis.ncore() << "  " << rbasis.nactive() << endl;
+    cout << rbasis << endl;
   }
 
 
