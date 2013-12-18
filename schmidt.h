@@ -19,16 +19,49 @@ private:
   vector<double> weight;
   double thr;
 public:
+  // constructors
   SchmidtBasis(const Matrix& _core, const Matrix& _active): core(_core), active(_active), weight(_active.Ncols(), 0.5), thr(0.) {};
   SchmidtBasis(const Matrix&, const vector<double>&, double, double);
+  // cout
   friend std::ostream& operator <<(std::ostream&, const SchmidtBasis&);
+  // get properties
   int ncore() const {
     return core.Ncols();
   }
   int nactive() const {
-    return  active.Ncols();
+    return active.Ncols();
   }
+  int nsites() const {
+   return core.Nrows();
+  }
+  double get_thr() const {
+    return thr;
+  }
+  // member acess
+  const Matrix get_core() const {
+    return std::move(core);
+  }
+  const Matrix get_active() const {
+    return std::move(active);
+  }
+  const ColumnVector get_core(int n) const {
+    return std::move(core.Column(n));
+  }
+  const ColumnVector get_active(int n) const {
+    return std::move(active.Row(n));
+  }
+  // destructor
+  ~SchmidtBasis() {}
 };
 
-
+class CoupledBasis {
+private:
+  const SchmidtBasis *lbasis, *rbasis;
+  Matrix cc, ac, ca, aa, cs, as; // c - core, a - active, s - site
+  int nsites;
+  void contract1p();
+public:
+  CoupledBasis(const SchmidtBasis&, const SchmidtBasis&);
+  ~CoupledBasis();
+};
 #endif

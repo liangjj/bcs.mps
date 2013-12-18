@@ -32,12 +32,32 @@ std::ostream& operator <<(std::ostream& os, const SchmidtBasis& basis) {
   os.precision(10);
   os << "Core Orbitals (" << basis.ncore() << ")\n";
   //os << basis.core << endl;
-  os << "Active Space (" << basis.nactive() << ")\n";
-  //os << basis.active << endl;
+  os << "Active Space (" << basis.nactive() << ") with weights:\n";
   for (int i = 0; i < basis.weight.size(); ++i) {
     cout << basis.weight[i] << "  ";
   }
   cout << endl;
-  cout << basis.thr << endl;
+  //os << basis.active << endl;
   return os;
 }
+
+CoupledBasis::CoupledBasis(const SchmidtBasis& _lbasis, const SchmidtBasis& _rbasis): lbasis(&_lbasis),  rbasis(&_rbasis) {
+  assert(lbasis->nsites() == rbasis->nsites()+1);
+  nsites = lbasis->nsites();
+  contract1p(); 
+}
+
+void CoupledBasis::contract1p() {
+  cc = lbasis->get_core().Rows(2, nsites).t() * rbasis->get_core();
+  ac = lbasis->get_active().Rows(2, nsites).t() * rbasis->get_core();
+  ca = lbasis->get_core().Rows(2, nsites).t() * rbasis->get_active();
+  aa = lbasis->get_active().Rows(2, nsites).t() * rbasis->get_active();
+  cs = lbasis->get_core().Row(1).t();
+  as = lbasis->get_active().Row(1).t();
+}
+
+CoupledBasis::~CoupledBasis() {
+  lbasis = nullptr;
+  rbasis = nullptr;
+}
+

@@ -133,11 +133,10 @@ int main(int argc, char* argv[]){
     natural_orbs(prdm, occs, natorbs);
     SchmidtBasis rbasis(natorbs, occs, thr1p, thrnp);
     cout << site+1 << endl;
-    //cout << rbasis.ncore() << "  " << rbasis.nactive() << endl;
     cout << rbasis << endl;
+    CoupledBasis pair(lbasis, rbasis);
+    lbasis = std::move(rbasis);
   }
-
-
 
   boost::filesystem::path to_remove(mps_temp);
   boost::filesystem::remove_all(to_remove);
