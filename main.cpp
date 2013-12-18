@@ -26,20 +26,6 @@ const string mps_dir = "/home/boxiao/mps/mps.out";
 using namespace btas;
 using namespace mpsxx;
 
-/*
-void is_canonical(QSDArray<3,Quantum>& mat, MPS_DIRECTION dir) {
-    enum{p,q,r,s};
-    QSDArray<2,Quantum> loc;
-    if (dir == MPS_DIRECTION::Left) {
-      QSDindexed_contract (1.0, mat, shape(p,q,r), mat.conjugate(), shape(p,q,s), 0.0, loc, shape(r,s));
-    } else {
-      QSDindexed_contract (1.0, mat, shape(p,q,r), mat.conjugate(), shape(s,q,r), 0.0, loc, shape(p,s));
-    }
-    cout << loc;
-    // need more to finish
-}
-*/
-
 int read_input(char* file, vector<int>& order, Matrix*& orbs) {
   string line;
   ifstream in(file);
@@ -97,9 +83,30 @@ void permute(Matrix*& orbs, vector<int>& order) {
   delete orbs_i;
 }
 
+void banner() {
+  cout << "-----------------------------------------------------------------------\n";
+  cout << "                           G P S - M P S                               \n";
+  cout << "   (Gutzwiller Projection of Single Slater Determinants through MPS)   \n\n";
+  cout << "                           Bo-Xiao Zheng                               \n";
+  cout << "-----------------------------------------------------------------------\n";
+}
+
 int main(int argc, char* argv[]){
   cout.setf(std::ios::fixed, std::ios::floatfield);
   cout.precision(10);
+
+  assert(argc > 1);
+  double thr1p = pow(10., -7.);
+  int M = 1000;
+  if (argc > 2) {
+    thr1p = pow(10., -atoi(argv[2]));
+  }
+  if (argc > 3) {
+    M = atoi(argv[3]);
+  }
+  banner();
+
+  /*
 
   assert(argc > 2);
   int M = atoi(argv[2]);
@@ -220,7 +227,7 @@ int main(int argc, char* argv[]){
     }
     cout << endl;
   }
-  /*
+  *
   ofstream ofs((mps_dir+"/es").c_str());
   ofs.setf(std::ios::fixed, std::ios::floatfield);
   ofs.precision(10);
@@ -232,8 +239,9 @@ int main(int argc, char* argv[]){
     ofs << endl;
   }
   ofs.close();
-  */
+  *
   boost::filesystem::path to_remove(mps_temp);
   boost::filesystem::remove_all(to_remove);
   return 0;
+  */
 }
