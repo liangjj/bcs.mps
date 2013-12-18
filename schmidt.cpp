@@ -3,8 +3,57 @@
 #include <algorithm>    // std::find
 #include <math.h>       /* sqrt */
 #include <iomanip>
+#include <algorithm>    // std::reverse
 
 using std::endl;
+
+uint choose(int iN, int iR){
+    if (iR < 0 || iR > iN) {
+        return 0;
+    }
+    if (iR > iN/2) {
+      return choose(iN, iN-iR);
+    }
+    uint iComb = 1;
+    int i = 0;
+    while (i < iR) {
+        ++i;
+        iComb *= iN - i + 1;
+        iComb /= i;
+    }
+    return iComb;
+}
+
+uint SchmidtBasis::addr(const vector<bool>& bits) const {
+  int occ = 0;
+  uint address = 0;
+  for (int i = 0; i < nactive(); ++i) {
+    if (bits[i]) {
+      address += choose(i, ++occ);
+    }
+  }
+  return address;
+}
+
+vector<bool> SchmidtBasis::bits(int nocc, uint address) const {
+  vector<bool> temp_bits;
+  for (int i = nactive()-1; i >= 0; --i) {
+    if (address >= choose(i, nocc)) {
+      temp_bits.push_back(true);
+      address -= choose(i, nocc--);
+    } else {
+      temp_bits.push_back(false);
+    }
+  }
+  std::reverse(temp_bits.begin(), temp_bits.end());
+  return std::move(temp_bits);
+}
+
+void SchmidtBasis::test() {
+  cout << "Test" << endl;
+  cout << addr(bits(3, 0)) << endl;
+  cout << addr(bits(3, 3)) << endl;  
+}
 
 SchmidtBasis::SchmidtBasis(const Matrix& nat_orbs, const vector<double>& occ, double thr1p, double thrnp): thr(thrnp) {
   assert(nat_orbs.Ncols() == occ.size());
@@ -34,9 +83,9 @@ std::ostream& operator <<(std::ostream& os, const SchmidtBasis& basis) {
   //os << basis.core << endl;
   os << "Active Space (" << basis.nactive() << ") with weights:\n";
   for (int i = 0; i < basis.weight.size(); ++i) {
-    cout << basis.weight[i] << "  ";
+    os << basis.weight[i] << "  ";
   }
-  cout << endl;
+  os << endl;
   //os << basis.active << endl;
   return os;
 }
@@ -44,7 +93,11 @@ std::ostream& operator <<(std::ostream& os, const SchmidtBasis& basis) {
 CoupledBasis::CoupledBasis(const SchmidtBasis& _lbasis, const SchmidtBasis& _rbasis): lbasis(&_lbasis),  rbasis(&_rbasis) {
   assert(lbasis->nsites() == rbasis->nsites()+1);
   nsites = lbasis->nsites();
-  contract1p(); 
+  lc = lbasis->ncore();
+  la = lbasis->nactive();
+  rc = rbasis->ncore();
+  ra = rbasis->nactive();
+  contract1p();
 }
 
 void CoupledBasis::contract1p() {
