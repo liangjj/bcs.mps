@@ -15,25 +15,34 @@ enum class Spin: int {up = 0, down = 1};
 
 uint choose(int, int);
 
+class ActiveSpaceIterator {
+private:
+  int nsites, nocc;
+  uint max, ptr;
+
+  uint addr(const vector<bool>&) const;
+  vector<bool> bits(uint) const;
+public:
+  ActiveSpaceIterator(int, int);
+  void reset() {
+    ptr = 0;
+  }
+  vector<bool> next();
+  bool end();
+};
+
 class SchmidtBasis {
 private:
   Matrix core, active;
   vector<double> weight;
   double thr;
-  uint addr(const vector<bool>&) const;
-  vector<bool> bits(int, uint) const;
-  uint max_addr(int nocc) const {
-    return choose(nactive(), nocc);
-  }
+  vector<uint> addr_ptr;
 public:
   // constructors
-  SchmidtBasis(const Matrix& _core, const Matrix& _active): core(_core), active(_active), weight(_active.Ncols(), 0.5), thr(0.) {};
+  SchmidtBasis(const Matrix& _core, const Matrix& _active): core(_core), active(_active), weight(_active.Ncols(), 0.5), thr(0.), addr_ptr(_active.Ncols(), 0) {};
   SchmidtBasis(const Matrix&, const vector<double>&, double, double);
   // cout
   friend std::ostream& operator <<(std::ostream&, const SchmidtBasis&);
-  // test
-  void test();
-
   // get properties
   int ncore() const {
     return core.Ncols();

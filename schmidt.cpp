@@ -24,10 +24,14 @@ uint choose(int iN, int iR){
     return iComb;
 }
 
-uint SchmidtBasis::addr(const vector<bool>& bits) const {
+ActiveSpaceIterator::ActiveSpaceIterator(int _nsites, int _nocc): nsites(_nsites), nocc(_nocc), ptr(0) {
+  max = choose(nsites, nocc);
+}
+
+uint ActiveSpaceIterator::addr(const vector<bool>& bits) const {
   int occ = 0;
   uint address = 0;
-  for (int i = 0; i < nactive(); ++i) {
+  for (int i = 0; i < nsites; ++i) {
     if (bits[i]) {
       address += choose(i, ++occ);
     }
@@ -35,24 +39,19 @@ uint SchmidtBasis::addr(const vector<bool>& bits) const {
   return address;
 }
 
-vector<bool> SchmidtBasis::bits(int nocc, uint address) const {
+vector<bool> ActiveSpaceIterator::bits(uint address) const {
   vector<bool> temp_bits;
-  for (int i = nactive()-1; i >= 0; --i) {
-    if (address >= choose(i, nocc)) {
+  int _nocc = nocc;
+  for (int i = nsites-1; i >= 0; --i) {
+    if (address >= choose(i, _nocc)) {
       temp_bits.push_back(true);
-      address -= choose(i, nocc--);
+      address -= choose(i, _nocc--);
     } else {
       temp_bits.push_back(false);
     }
   }
   std::reverse(temp_bits.begin(), temp_bits.end());
   return std::move(temp_bits);
-}
-
-void SchmidtBasis::test() {
-  cout << "Test" << endl;
-  cout << addr(bits(3, 0)) << endl;
-  cout << addr(bits(3, 3)) << endl;  
 }
 
 SchmidtBasis::SchmidtBasis(const Matrix& nat_orbs, const vector<double>& occ, double thr1p, double thrnp): thr(thrnp) {
@@ -74,6 +73,8 @@ SchmidtBasis::SchmidtBasis(const Matrix& nat_orbs, const vector<double>& occ, do
     active.Column(i+1) << nat_orbs.Column(idx_a[i]+1);
     weight.push_back(occ.at(idx_a[i]));
   }
+  addr_ptr.resize(active.Ncols());
+  std::fill(addr_ptr.begin(), addr_ptr.end(), 0);
 }
 
 std::ostream& operator <<(std::ostream& os, const SchmidtBasis& basis) {
