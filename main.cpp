@@ -124,6 +124,8 @@ int main(int argc, char* argv[]){
   rdm << coefs * coefs.t();
   vector<double> occs(norbs, 1.);
   SchmidtBasis lbasis(coefs, occs, thr1p, thrnp);
+  // prepare MPS
+  MPS<Quantum> A = allocate(nsites, M, false);
 
   for (int site = 0; site < nsites-1; ++site) {
     // first build right basis
@@ -135,27 +137,15 @@ int main(int argc, char* argv[]){
     cout << site+1 << endl;
     cout << rbasis << endl;
     CoupledBasis pair(lbasis, rbasis);
+    // do some thing
+
     lbasis = std::move(rbasis);
-    auto act = lbasis.iterator(1, 1);
   }
 
   boost::filesystem::path to_remove(mps_temp);
   boost::filesystem::remove_all(to_remove);
 
   /*
-  // creat the first Slater determinant object (whole system)
-  vector<int> sites;
-  for (int i = 0; i < (*orbs).Nrows(); ++i) {
-    sites.push_back(i+1);
-  }
-  int nsites = sites.size();
-
-  Matrix* orbs1 = new Matrix(*orbs);
-  SlaterDet* Det = new SlaterDet(orbs, orbs1, sites, 1.);
-  WfnContainer *wfns;
-  wfns = new WfnContainer(M);
-  wfns -> push_back(Det, 0, 0); // wfns takes over the slater determinant and Det repoints to null.
-
   // prepare MPS
   MPS<Quantum> A = allocate(nsites, M, false);
   for (int i = 0; i < nsites-1; ++i) {
