@@ -147,6 +147,15 @@ double SchmidtBasis::get_weight(const vector<bool>& bits) const {
   return w;
 }
 
+ActiveSpaceIterator SchmidtBasis::iterator(int noccA, int noccB) { // noccs of active space
+  vector<int> occs = {noccA, noccB};
+  auto it = iterators.find(occs);
+  if (it == iterators.end()) {
+    iterators.insert(it, std::pair<vector<int>, ActiveSpaceIterator>(occs, ActiveSpaceIterator(nactive(), noccA, noccB, this)));
+  }
+  return std::move(it->second);  
+}
+
 CoupledBasis::CoupledBasis(const SchmidtBasis& _lbasis, const SchmidtBasis& _rbasis): lbasis(&_lbasis),  rbasis(&_rbasis) {
   assert(lbasis->nsites() == rbasis->nsites()+1);
   nsites = lbasis->nsites();

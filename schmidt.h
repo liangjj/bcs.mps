@@ -67,6 +67,8 @@ private:
   vector<double> weight;
   // threshold to discard the Slater determinant
   double thr;
+  // store iterators
+  map<vector<int>, ActiveSpaceIterator> iterators;
 
 public:
   // constructors
@@ -82,6 +84,9 @@ public:
   int nsites() const { return core.Nrows();}
   double get_thr() const {  return thr;}
   double get_weight(const vector<bool>&) const;
+
+  // iterators
+  ActiveSpaceIterator iterator(int, int);
 
   // member acess
   const Matrix get_core() const {  return std::move(core);}
