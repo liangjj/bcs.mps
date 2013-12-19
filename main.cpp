@@ -136,6 +136,7 @@ int main(int argc, char* argv[]){
     cout << rbasis << endl;
     CoupledBasis pair(lbasis, rbasis);
     lbasis = std::move(rbasis);
+    auto act = lbasis.iterator(1, 1);
   }
 
   boost::filesystem::path to_remove(mps_temp);

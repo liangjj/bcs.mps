@@ -27,8 +27,8 @@ private:
   // pointer to the parent Schmidt basis
   const SchmidtBasis* basis;
   // weight lists
-  map<int, double> weightA, weightB;
-  map<int, double>::const_iterator ptrA, ptrB;
+  map<uint, double> weightA, weightB;
+  map<uint, double>::const_iterator ptrA, ptrB;
 
   // private functions: internal conversion
   uint addr(const vector<bool>&) const;  // bits -> address

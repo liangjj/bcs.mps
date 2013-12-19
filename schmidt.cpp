@@ -27,19 +27,20 @@ uint choose(int iN, int iR){
 ActiveSpaceIterator::ActiveSpaceIterator(int _nsites, int _noccA, int _noccB, const SchmidtBasis* const _basis): nsites(_nsites), noccA(_noccA), noccB(_noccB), basis(_basis) {
   maxA = choose(nsites, noccA);
   maxB = choose(nsites, noccB);
+  assert(maxA != 0 && maxB != 0);
   double threshold = basis -> get_thr();
   // now do one iteration to store the possible indices for each spin
   for (int i = 0; i < maxA; ++i) {
     double w = basis -> get_weight(bits(i, Spin::up));
     if (w > threshold) {
-      weightA.insert(std::pair<int, double>(i, w));
+      weightA.insert(std::pair<uint, double>(i, w));
     }
   }
   ptrA = weightA.cbegin();
   for (int i = 0; i < maxB; ++i) {
     double w = basis -> get_weight(bits(i, Spin::down));
     if (w > threshold) {
-      weightB.insert(std::pair<int, double>(i, w));
+      weightB.insert(std::pair<uint, double>(i, w));
     }
   }
   ptrB = weightB.cbegin();
@@ -151,9 +152,10 @@ ActiveSpaceIterator SchmidtBasis::iterator(int noccA, int noccB) { // noccs of a
   vector<int> occs = {noccA, noccB};
   auto it = iterators.find(occs);
   if (it == iterators.end()) {
-    iterators.insert(it, std::pair<vector<int>, ActiveSpaceIterator>(occs, ActiveSpaceIterator(nactive(), noccA, noccB, this)));
+    ActiveSpaceIterator asi(nactive(), noccA, noccB, this);
+    iterators.insert(std::pair<vector<int>, ActiveSpaceIterator>(occs, std::move(asi)));
   }
-  return std::move(it->second);  
+  return std::move(iterators.at(occs));  
 }
 
 CoupledBasis::CoupledBasis(const SchmidtBasis& _lbasis, const SchmidtBasis& _rbasis): lbasis(&_lbasis),  rbasis(&_rbasis) {
