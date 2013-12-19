@@ -24,8 +24,25 @@ uint choose(int iN, int iR){
     return iComb;
 }
 
-ActiveSpaceIterator::ActiveSpaceIterator(int _nsites, int _nocc): nsites(_nsites), nocc(_nocc), ptr(0) {
-  max = choose(nsites, nocc);
+ActiveSpaceIterator::ActiveSpaceIterator(int _nsites, int _noccA, int _noccB, const SchmidtBasis* const _basis): nsites(_nsites), noccA(_noccA), noccB(_noccB), basis(_basis) {
+  maxA = choose(nsites, noccA);
+  maxB = choose(nsites, noccB);
+  double threshold = basis -> get_thr();
+  // now do one iteration to store the possible indices for each spin
+  for (int i = 0; i < maxA; ++i) {
+    double w = basis -> get_weight(bits(i, Spin::up));
+    if (w > threshold) {
+      weightA.insert(std::pair<int, double>(i, w));
+    }
+  }
+  ptrA = weightA.cbegin();
+  for (int i = 0; i < maxB; ++i) {
+    double w = basis -> get_weight(bits(i, Spin::down));
+    if (w > threshold) {
+      weightB.insert(std::pair<int, double>(i, w));
+    }
+  }
+  ptrB = weightB.cbegin();
 }
 
 uint ActiveSpaceIterator::addr(const vector<bool>& bits) const {
@@ -39,9 +56,14 @@ uint ActiveSpaceIterator::addr(const vector<bool>& bits) const {
   return address;
 }
 
-vector<bool> ActiveSpaceIterator::bits(uint address) const {
+vector<bool> ActiveSpaceIterator::bits(uint address, Spin s) const {
   vector<bool> temp_bits;
-  int _nocc = nocc;
+  int _nocc;
+  if (s == Spin::up) {
+    _nocc = noccA;
+  } else {
+    _nocc = noccB;
+  }
   for (int i = nsites-1; i >= 0; --i) {
     if (address >= choose(i, _nocc)) {
       temp_bits.push_back(true);
@@ -52,6 +74,30 @@ vector<bool> ActiveSpaceIterator::bits(uint address) const {
   }
   std::reverse(temp_bits.begin(), temp_bits.end());
   return std::move(temp_bits);
+}
+
+std::pair<vector<bool>, vector<bool>> ActiveSpaceIterator::fetch() const {
+  auto bitsA = bits(ptrA->first, Spin::up);
+  auto bitsB = bits(ptrB->first, Spin::down);
+  return std::pair<vector<bool>, vector<bool>>(bitsA, bitsB);
+}
+
+void ActiveSpaceIterator::find() {
+  double threshold = basis -> get_thr();
+  while (!end()) {
+    if (ptrA->second * ptrB->second > threshold) {
+      break;
+    }
+    next();
+  }
+}
+
+void ActiveSpaceIterator::next() {
+  ++ptrB;
+  if (ptrB == weightB.cend()) {
+    ptrB = weightB.cbegin();
+    ++ptrA;
+  }
 }
 
 SchmidtBasis::SchmidtBasis(const Matrix& nat_orbs, const vector<double>& occ, double thr1p, double thrnp): thr(thrnp) {
@@ -73,8 +119,6 @@ SchmidtBasis::SchmidtBasis(const Matrix& nat_orbs, const vector<double>& occ, do
     active.Column(i+1) << nat_orbs.Column(idx_a[i]+1);
     weight.push_back(occ.at(idx_a[i]));
   }
-  addr_ptr.resize(active.Ncols());
-  std::fill(addr_ptr.begin(), addr_ptr.end(), 0);
 }
 
 std::ostream& operator <<(std::ostream& os, const SchmidtBasis& basis) {
@@ -89,6 +133,18 @@ std::ostream& operator <<(std::ostream& os, const SchmidtBasis& basis) {
   os << endl;
   //os << basis.active << endl;
   return os;
+}
+
+double SchmidtBasis::get_weight(const vector<bool>& bits) const {
+  double w = 1.;
+  for (int i = 0; i < bits.size(); ++i) {
+    if (bits[i]) {
+      w *= weight[i];
+    } else {
+      w *= 1.-weight[i];
+    }
+  }
+  return w;
 }
 
 CoupledBasis::CoupledBasis(const SchmidtBasis& _lbasis, const SchmidtBasis& _rbasis): lbasis(&_lbasis),  rbasis(&_rbasis) {
