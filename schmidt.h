@@ -22,13 +22,10 @@ class ActiveSpaceIterator {
 private:
   // number of sites, occupations alpha and beta
   int nsites, noccA, noccB;
-  // maximum indices and current indices  
-  uint maxA, maxB;
   // pointer to the parent Schmidt basis
   const SchmidtBasis* basis;
-  // weight lists
-  map<uint, double> weightA, weightB;
-  map<uint, double>::const_iterator ptrA, ptrB;
+  // stores all possible indices, alpha and beta spin
+  vector<pair<uint, uint>> list;
 
   // private functions: internal conversion
   uint addr(const vector<bool>&) const;  // bits -> address
@@ -39,21 +36,10 @@ public:
   ActiveSpaceIterator(int, int, int, const SchmidtBasis*);
 
   // iterator behaviors
-  std::pair<vector<bool>, vector<bool>> fetch() const;
-  void find();
-  void next();
-  void reset() {
-    ptrA = weightA.cbegin();
-    ptrB = weightB.cbegin();
+  std::pair<vector<bool>, vector<bool>> get_pair(int i) const;
+  int size() const {
+    return list.size();
   }
-  int size(Spin s) const {
-    if (s == Spin::up) {
-      return weightA.size();
-    } else {
-      return weightB.size();
-    }
-  }
-  bool end() const {  return ptrA == weightA.cend() || weightA.size() * weightB.size() == 0;}
 
   // destructor
   ~ActiveSpaceIterator() {  basis = nullptr;}

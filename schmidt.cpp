@@ -24,28 +24,6 @@ uint choose(int iN, int iR){
     return iComb;
 }
 
-ActiveSpaceIterator::ActiveSpaceIterator(int _nsites, int _noccA, int _noccB, const SchmidtBasis* _basis): nsites(_nsites), noccA(_noccA), noccB(_noccB), basis(_basis) {
-  maxA = choose(nsites, noccA);
-  maxB = choose(nsites, noccB);
-  assert(maxA != 0 && maxB != 0);
-  double threshold = basis -> get_thr();
-  // now do one iteration to store the possible indices for each spin
-  for (int i = 0; i < maxA; ++i) {
-    double w = basis -> get_weight(bits(i, Spin::up));
-    if (w > threshold) {
-      weightA.insert(std::pair<uint, double>(i, w));
-    }
-  }
-  ptrA = weightA.cbegin();
-  for (int i = 0; i < maxB; ++i) {
-    double w = basis -> get_weight(bits(i, Spin::down));
-    if (w > threshold) {
-      weightB.insert(std::pair<uint, double>(i, w));
-    }
-  }
-  ptrB = weightB.cbegin();
-}
-
 uint ActiveSpaceIterator::addr(const vector<bool>& bits) const {
   int occ = 0;
   uint address = 0;
@@ -77,28 +55,41 @@ vector<bool> ActiveSpaceIterator::bits(uint address, Spin s) const {
   return std::move(temp_bits);
 }
 
-std::pair<vector<bool>, vector<bool>> ActiveSpaceIterator::fetch() const {
-  auto bitsA = bits(ptrA->first, Spin::up);
-  auto bitsB = bits(ptrB->first, Spin::down);
-  return std::pair<vector<bool>, vector<bool>>(bitsA, bitsB);
-}
-
-void ActiveSpaceIterator::find() {
+ActiveSpaceIterator::ActiveSpaceIterator(int _nsites, int _noccA, int _noccB, const SchmidtBasis* _basis): nsites(_nsites), noccA(_noccA), noccB(_noccB), basis(_basis) {
+  // maximum indices
+  uint maxA = choose(nsites, noccA);
+  uint maxB = choose(nsites, noccB);
+  assert(maxA != 0 && maxB != 0);
   double threshold = basis -> get_thr();
-  while (!end()) {
-    if (ptrA->second * ptrB->second > threshold) {
-      break;
+  // first do one iteration to find the possible indices for each spin
+  map<uint, double> weightA, weightB;
+  for (uint i = 0; i < maxA; ++i) {
+    double w = basis -> get_weight(bits(i, Spin::up));
+    if (w > threshold) {
+      weightA.insert(std::pair<uint, double>(i, w));
     }
-    next();
+  }
+  for (uint i = 0; i < maxB; ++i) {
+    double w = basis -> get_weight(bits(i, Spin::down));
+    if (w > threshold) {
+      weightB.insert(std::pair<uint, double>(i, w));
+    }
+  }
+
+  // the second stage: find possible pairs
+  for (auto itA = weightA.cbegin(); itA != weightA.cend(); ++itA) {
+    for (auto itB = weightB.cbegin(); itB != weightB.cend(); ++itB) {
+      if (itA->second * itB->second > threshold) {
+        list.push_back(std::pair<uint, uint>(itA->first, itB->first));
+      }
+    }
   }
 }
 
-void ActiveSpaceIterator::next() {
-  ++ptrB;
-  if (ptrB == weightB.cend()) {
-    ptrB = weightB.cbegin();
-    ++ptrA;
-  }
+std::pair<vector<bool>, vector<bool>> ActiveSpaceIterator::get_pair(int i) const {
+  auto bitsA = bits(list[i].first, Spin::up);
+  auto bitsB = bits(list[i].second, Spin::down);
+  return std::pair<vector<bool>, vector<bool>>(bitsA, bitsB);
 }
 
 SchmidtBasis::SchmidtBasis(const Matrix& nat_orbs, const vector<double>& occ, double thr1p, double thrnp): thr(thrnp) {
@@ -217,18 +208,7 @@ void CoupledBasis::dimensions() {
     int nelecb = (nsites-q)/2 - lc;
     cout << "nelecs:" << neleca << "  " << nelecb << endl;
     auto it = lbasis -> iterator(neleca, nelecb);
-    int count = 0;
-    it.reset();    
-    cout << it.size(Spin::up) << "  " << it.size(Spin::down) << endl;    
-    it.find();
-    while (!it.end()) {
-      count += 1;
-      it.next();
-      it.find();
-    }
-    cout << count << "  ";
-    dl.push_back(count);
-    cout << endl;
+    cout << it.size() << endl;
   }
 }
 
