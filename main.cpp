@@ -125,7 +125,7 @@ int main(int argc, char* argv[]){
   vector<double> occs(norbs, 1.);
   SchmidtBasis lbasis(coefs, occs, thr1p, thrnp);
   // prepare MPS
-  MPS<Quantum> A = allocate(nsites, M, false);
+  // MPS<Quantum> A = allocate(nsites, M, false);
 
   for (int site = 0; site < nsites-1; ++site) {
     // first build right basis
@@ -134,9 +134,9 @@ int main(int argc, char* argv[]){
     Matrix natorbs;
     natural_orbs(prdm, occs, natorbs);
     SchmidtBasis rbasis(natorbs, occs, thr1p, thrnp);
-    cout << site+1 << endl;
-    cout << rbasis << endl;
-    CoupledBasis pair(lbasis, rbasis);
+    cout << "Site: " << site+1 << endl;
+    cout << lbasis << endl;
+    CoupledBasis basis_pair(lbasis, rbasis);
     // do some thing
 
     lbasis = std::move(rbasis);

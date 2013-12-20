@@ -24,7 +24,7 @@ uint choose(int iN, int iR){
     return iComb;
 }
 
-ActiveSpaceIterator::ActiveSpaceIterator(int _nsites, int _noccA, int _noccB, const SchmidtBasis* const _basis): nsites(_nsites), noccA(_noccA), noccB(_noccB), basis(_basis) {
+ActiveSpaceIterator::ActiveSpaceIterator(int _nsites, int _noccA, int _noccB, const SchmidtBasis* _basis): nsites(_nsites), noccA(_noccA), noccB(_noccB), basis(_basis) {
   maxA = choose(nsites, noccA);
   maxB = choose(nsites, noccB);
   assert(maxA != 0 && maxB != 0);
@@ -158,7 +158,7 @@ ActiveSpaceIterator SchmidtBasis::iterator(int noccA, int noccB) { // noccs of a
   return std::move(iterators.at(occs));  
 }
 
-CoupledBasis::CoupledBasis(const SchmidtBasis& _lbasis, const SchmidtBasis& _rbasis): lbasis(&_lbasis),  rbasis(&_rbasis) {
+CoupledBasis::CoupledBasis(SchmidtBasis& _lbasis, SchmidtBasis& _rbasis): lbasis(&_lbasis),  rbasis(&_rbasis) {
   assert(lbasis->nsites() == rbasis->nsites()+1);
   nsites = lbasis->nsites();
   lc = lbasis->ncore();
@@ -166,6 +166,8 @@ CoupledBasis::CoupledBasis(const SchmidtBasis& _lbasis, const SchmidtBasis& _rba
   rc = rbasis->ncore();
   ra = rbasis->nactive();
   contract1p();
+  quantum_number();
+  dimensions();
 }
 
 void CoupledBasis::contract1p() {
@@ -175,6 +177,59 @@ void CoupledBasis::contract1p() {
   aa = lbasis->get_active().Rows(2, nsites).t() * rbasis->get_active();
   cs = lbasis->get_core().Row(1).t();
   as = lbasis->get_active().Row(1).t();
+}
+
+void CoupledBasis::quantum_number() {
+  qp = {-1, 1};
+  // nelec is the same as nsites (left)
+  int nelec_l = nsites - 2*lc;
+  int nelec_r = nsites - 2*rc - 1;
+  
+  for (int ka = 0; ka <= la; ++ka) {
+    if (nelec_l-ka >= 0 && nelec_l-ka <= la) {
+      ql.push_back(2*ka - nelec_l);
+    }
+  }
+  for (int ka = 0; ka <= ra; ++ka) {
+    if (nelec_r-ka >= 0 && nelec_r-ka <= ra) {
+      qr.push_back(2*ka - nelec_r);
+    }
+  }
+  for (int i = 0; i < qp.size(); ++i) {
+    cout << qp[i] << "  ";
+  }
+  cout << endl;
+  for (int i = 0; i < ql.size(); ++i) {
+    cout << ql[i] << "  ";
+  }
+  cout << endl;
+  for (int i = 0; i < qr.size(); ++i) {
+    cout << qr[i] << "  ";
+  }
+  cout << endl;
+}
+
+void CoupledBasis::dimensions() {
+  dp = {1, 1};
+  cout << "Dimensions" << endl;
+  for (int q:ql) {
+    int neleca = (nsites+q)/2 - lc;
+    int nelecb = (nsites-q)/2 - lc;
+    cout << "nelecs:" << neleca << "  " << nelecb << endl;
+    auto it = lbasis -> iterator(neleca, nelecb);
+    int count = 0;
+    it.reset();    
+    cout << it.size(Spin::up) << "  " << it.size(Spin::down) << endl;    
+    it.find();
+    while (!it.end()) {
+      count += 1;
+      it.next();
+      it.find();
+    }
+    cout << count << "  ";
+    dl.push_back(count);
+    cout << endl;
+  }
 }
 
 CoupledBasis::~CoupledBasis() {

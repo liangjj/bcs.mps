@@ -53,7 +53,7 @@ public:
       return weightB.size();
     }
   }
-  bool end() const {  return ptrA == weightA.cend();}
+  bool end() const {  return ptrA == weightA.cend() || weightA.size() * weightB.size() == 0;}
 
   // destructor
   ~ActiveSpaceIterator() {  basis = nullptr;}
@@ -101,20 +101,25 @@ public:
 class CoupledBasis {
 private:
   // left and right basis of the site
-  const SchmidtBasis *lbasis, *rbasis;
+  SchmidtBasis *lbasis, *rbasis;
   // Matrix elements between orbitals
   Matrix cc, ac, ca, aa, cs, as; // c - core, a - active, s - site
   // number of sites (left)
   int nsites;
   // left/right core/active space size
   int lc, rc, la, ra; 
-  
+  vector<int> ql, qp, qr;
+  vector<int> dl, dp, dr;
+
   // member function contract 1-particle part
   void contract1p();
+  // calculate possible quantum number on left, right and physical indices
+  void quantum_number();
+  void dimensions();
 
 public:
   // constructor
-  CoupledBasis(const SchmidtBasis&, const SchmidtBasis&);
+  CoupledBasis(SchmidtBasis&, SchmidtBasis&);
   
   // destructor
   ~CoupledBasis();

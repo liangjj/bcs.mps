@@ -8,6 +8,7 @@ MPS<Quantum> allocate(int nsites, int M, int M_total, int M_min, bool dim) {
   // physical quantum numbers and dimensions
   Qshapes<Quantum> qp;
   physical(2, qp);
+  cout << qp << endl;
   Dshapes dp(qp.size(), 1);
 
   // right quantum numbers and dimensions
