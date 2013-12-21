@@ -13,6 +13,9 @@ using std::vector;
 using std::string;
 using std::map;
 
+using namespace btas;
+using namespace mpsxx;
+
 enum class Spin: int {up = 0, down = 1};
 
 // forward declaration
@@ -110,7 +113,7 @@ public:
   CoupledBasis(SchmidtBasis&, SchmidtBasis&);
   
   // generate MPS site
-  TVector<Quantum, 3> generate();
+  QSDArray<3, Quantum> generate();
 
   // destructor
   ~CoupledBasis();

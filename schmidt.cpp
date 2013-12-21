@@ -1,9 +1,8 @@
 #include "schmidt.h"
 #include <cassert>
-#include <algorithm>    // std::find
+#include <algorithm>    // std::find, std::reverse
 #include <math.h>       /* sqrt */
 #include <iomanip>
-#include <algorithm>    // std::reverse
 
 using std::endl;
 

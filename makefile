@@ -9,7 +9,7 @@
 # -----------------------------------------------------------------------------
 BINNAME = gps-mps.x
 CPPSRC	= main.cpp \
-		  mps_op.cpp \
+		  mps_gen.cpp \
 		  SpinHamiltonian.cpp \
 		  schmidt.cpp
 

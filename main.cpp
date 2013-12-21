@@ -10,7 +10,6 @@
 #include "schmidt.h"
 #include "newmat10/newmatap.h"
 #include "newmat10/newmatio.h"
-#include "mps_op.h"
 #include "boost/filesystem.hpp"
 
 using std::cout;
@@ -138,7 +137,7 @@ int main(int argc, char* argv[]){
     cout << lbasis << endl;
     CoupledBasis basis_pair(lbasis, rbasis);
     // do some thing
-    // A[i] = basis_pair.generate();
+    A[site] = basis_pair.generate();
     lbasis = std::move(rbasis);
   }
 
