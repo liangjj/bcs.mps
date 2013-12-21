@@ -159,6 +159,38 @@ CoupledBasis::CoupledBasis(SchmidtBasis& _lbasis, SchmidtBasis& _rbasis): lbasis
   contract1p();
   quantum_number();
   dimensions();
+  
+  cout << "qp ";
+  for (int i = 0; i < qp.size(); ++i) {
+    cout << qp[i] << "  ";
+  }
+  cout << endl;
+  cout << "ql ";
+  for (int i = 0; i < ql.size(); ++i) {
+    cout << ql[i] << "  ";
+  }
+  cout << endl;
+  cout << "qr ";
+  for (int i = 0; i < qr.size(); ++i) {
+    cout << qr[i] << "  ";
+  }
+  cout << endl;
+
+  cout << "dp ";
+  for (int i = 0; i < qp.size(); ++i) {
+    cout << dp[i] << "  ";
+  }
+  cout << endl;
+  cout << "dl ";
+  for (int i = 0; i < ql.size(); ++i) {
+    cout << dl[i] << "  ";
+  }
+  cout << endl;
+  cout << "dr ";
+  for (int i = 0; i < qr.size(); ++i) {
+    cout << dr[i] << "  ";
+  }
+  cout << endl;
 }
 
 void CoupledBasis::contract1p() {
@@ -186,29 +218,36 @@ void CoupledBasis::quantum_number() {
       qr.push_back(2*ka - nelec_r);
     }
   }
-  for (int i = 0; i < qp.size(); ++i) {
-    cout << qp[i] << "  ";
-  }
-  cout << endl;
-  for (int i = 0; i < ql.size(); ++i) {
-    cout << ql[i] << "  ";
-  }
-  cout << endl;
-  for (int i = 0; i < qr.size(); ++i) {
-    cout << qr[i] << "  ";
-  }
-  cout << endl;
 }
 
 void CoupledBasis::dimensions() {
   dp = {1, 1};
-  cout << "Dimensions" << endl;
   for (int q:ql) {
     int neleca = (nsites+q)/2 - lc;
     int nelecb = (nsites-q)/2 - lc;
-    cout << "nelecs:" << neleca << "  " << nelecb << endl;
     auto it = lbasis -> iterator(neleca, nelecb);
-    cout << it.size() << endl;
+    dl.push_back(it.size());
+  }
+  for (int q:qr) {
+    int neleca = (nsites+q-1)/2 - rc;
+    int nelecb = (nsites-q-1)/2 - rc;
+    auto it -> rbasis -> iterator(neleca, nelecb);
+    dr.push_back(it.size());
+  }
+  // now if any dimension is 0, delete that quantum number and dimension
+  for (int i = 0; i < dl.size(); ++i) {
+    if (dl[i] == 0) {
+      dl.erase(dl.begin()+i);
+      ql.erase(ql.begin()+i);
+      i -= 1;
+    }
+  }
+  for (int i = 0; i < dr.size(); ++i) {
+    if (dr[i] == 0) {
+      dr.erase(dr.begin()+i);
+      qr.erase(qr.begin()+i);
+      i -= 1;
+    }
   }
 }
 
