@@ -166,7 +166,7 @@ CoupledBasis::CoupledBasis(SchmidtBasis& _lbasis, SchmidtBasis& _rbasis): lbasis
     for (int j = 0; j < qp.size(); ++j) {
       for (int k = 0; k < qr.size(); ++k) {
         if (ql[i]+qp[j] == qr[k]) {
-          vector<int> temp = {i, j, k};
+          IVector<3> temp = {i, j, k};
           block.push_back(temp);
         }
       }

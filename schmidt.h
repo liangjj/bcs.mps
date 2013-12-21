@@ -100,7 +100,7 @@ private:
   int lc, rc, la, ra; 
   vector<int> ql, qp, qr;
   vector<int> dl, dp, dr;
-  vector<vector<int>> block;
+  vector<IVector<3>> block;
 
   // member function contract 1-particle part
   void contract1p();
