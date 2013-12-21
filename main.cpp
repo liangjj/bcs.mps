@@ -125,7 +125,7 @@ int main(int argc, char* argv[]){
   vector<double> occs(norbs, 1.);
   SchmidtBasis lbasis(coefs, occs, thr1p, thrnp);
   // prepare MPS
-  // MPS<Quantum> A = allocate(nsites, M, false);
+  MPS<Quantum> A(nsites);
 
   for (int site = 0; site < nsites-1; ++site) {
     // first build right basis
@@ -138,7 +138,7 @@ int main(int argc, char* argv[]){
     cout << lbasis << endl;
     CoupledBasis basis_pair(lbasis, rbasis);
     // do some thing
-
+    // A[i] = basis_pair.generate();
     lbasis = std::move(rbasis);
   }
 

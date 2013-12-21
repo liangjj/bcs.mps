@@ -1,4 +1,7 @@
 //nog enkele definities:
+#ifndef INCLUDE_H_
+#define INCLUDE_H_
+
 #include "SpinQuantum.h"
 namespace btas { typedef SpinQuantum Quantum; };
 
@@ -16,3 +19,5 @@ namespace btas { typedef SpinQuantum Quantum; };
 #include <MPSblas.h>
 
 #include "SpinHamiltonian.h"
+
+#endif

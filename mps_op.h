@@ -1,7 +1,6 @@
 #ifndef MPS_OP
 #define MPS_OP
 
-#include "SpinQuantum.h"
 #include "include.h"
 #include <boost/archive/binary_oarchive.hpp>
 #include <boost/archive/binary_iarchive.hpp>

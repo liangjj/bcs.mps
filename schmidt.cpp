@@ -156,41 +156,23 @@ CoupledBasis::CoupledBasis(SchmidtBasis& _lbasis, SchmidtBasis& _rbasis): lbasis
   la = lbasis->nactive();
   rc = rbasis->ncore();
   ra = rbasis->nactive();
+  // contract one-particle orbitals
   contract1p();
+  // calculate possible quantum numbers
   quantum_number();
+  // calculate dimensions
   dimensions();
-  
-  cout << "qp ";
-  for (int i = 0; i < qp.size(); ++i) {
-    cout << qp[i] << "  ";
-  }
-  cout << endl;
-  cout << "ql ";
+  // make possible block list
   for (int i = 0; i < ql.size(); ++i) {
-    cout << ql[i] << "  ";
+    for (int j = 0; j < qp.size(); ++j) {
+      for (int k = 0; k < qr.size(); ++k) {
+        if (ql[i]+qp[j] == qr[k]) {
+          vector<int> temp = {i, j, k};
+          block.push_back(temp);
+        }
+      }
+    }
   }
-  cout << endl;
-  cout << "qr ";
-  for (int i = 0; i < qr.size(); ++i) {
-    cout << qr[i] << "  ";
-  }
-  cout << endl;
-
-  cout << "dp ";
-  for (int i = 0; i < qp.size(); ++i) {
-    cout << dp[i] << "  ";
-  }
-  cout << endl;
-  cout << "dl ";
-  for (int i = 0; i < ql.size(); ++i) {
-    cout << dl[i] << "  ";
-  }
-  cout << endl;
-  cout << "dr ";
-  for (int i = 0; i < qr.size(); ++i) {
-    cout << dr[i] << "  ";
-  }
-  cout << endl;
 }
 
 void CoupledBasis::contract1p() {

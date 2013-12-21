@@ -1,6 +1,7 @@
 #ifndef SCHMIDT
 #define SCHMIDT
 
+#include "include.h"
 #include <iostream>
 #include <string>
 #include <vector>
@@ -96,6 +97,7 @@ private:
   int lc, rc, la, ra; 
   vector<int> ql, qp, qr;
   vector<int> dl, dp, dr;
+  vector<vector<int>> block;
 
   // member function contract 1-particle part
   void contract1p();
@@ -107,6 +109,9 @@ public:
   // constructor
   CoupledBasis(SchmidtBasis&, SchmidtBasis&);
   
+  // generate MPS site
+  TVector<Quantum, 3> generate();
+
   // destructor
   ~CoupledBasis();
 };
