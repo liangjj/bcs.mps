@@ -231,7 +231,7 @@ void CoupledBasis::dimensions() {
   for (int q:qr) {
     int neleca = (nsites+q-1)/2 - rc;
     int nelecb = (nsites-q-1)/2 - rc;
-    auto it -> rbasis -> iterator(neleca, nelecb);
+    auto it = rbasis -> iterator(neleca, nelecb);
     dr.push_back(it.size());
   }
   // now if any dimension is 0, delete that quantum number and dimension
