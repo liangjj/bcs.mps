@@ -20,10 +20,10 @@ QSDArray<3, Quantum> CoupledBasis::generate() {
   }
 
   A.resize(Quantum::zero(), qshape, dshape, false);
-  cout << A.qshape() << endl;
-  cout << "nblock = " << block.size() << endl;
+  //cout << A.qshape() << endl;
+  //cout << "nblock = " << block.size() << endl;
   for (int i = 0; i < block.size(); ++i) {
-    cout << block[i] << endl;
+    //cout << block[i] << endl;
     A.reserve(block[i]);
     // now fill in data
     DArray<3> dense;
@@ -44,7 +44,7 @@ QSDArray<3, Quantum> CoupledBasis::generate() {
     int phys = qp[block[i][1]];
     assert(iter_l.size() == dense.shape()[0]);
     assert(iter_r.size() == dense.shape()[2]);
-    cout << nla+lc << " " << nlb+lc << " " << nra+rc << " " << nrb+rc << " " << 1-int(s) << " " << int(s) << endl;
+    //cout << nla+lc << " " << nlb+lc << " " << nra+rc << " " << nrb+rc << " " << 1-int(s) << " " << int(s) << endl;
     for (int j = 0; j < iter_l.size(); ++j) {
       for (int k = 0; k < iter_r.size(); ++k) {
         dense(j, 0, k) = overlap(iter_l.get_pair(j), iter_r.get_pair(k), s, nla, nlb, nra, nrb);

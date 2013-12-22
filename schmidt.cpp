@@ -245,6 +245,9 @@ double CoupledBasis::overlap(const std::pair<vector<bool>, vector<bool>> left, c
     for (int i = 0; i < la; ++i) {
       if (left.first[i]) {
         mat_a.SubMatrix(count+1, count+1, nla+lc-rc+1, nla+lc) = ac.Row(i+1);
+        if (sa) {
+          mat_a(count+1, 1) = as(i+1, 1);
+        }
         ++count;
       }
     }   
@@ -278,6 +281,9 @@ double CoupledBasis::overlap(const std::pair<vector<bool>, vector<bool>> left, c
     for (int i = 0; i < la; ++i) {
       if (left.second[i]) {
         mat_b.SubMatrix(count+1, count+1, nlb+lc-rc+1, nlb+lc) = ac.Row(i+1);
+        if (sb) {
+          mat_b(count+1, 1) = as(i+1, 1);
+        }
         ++count;
       }
     }
@@ -306,13 +312,20 @@ double CoupledBasis::overlap(const std::pair<vector<bool>, vector<bool>> left, c
       }
     }
   }
+  if (sa) {  // onsite (alpha)
+    mat_a.SubMatrix(nla+1, nla+lc, 1, 1) = cs;
+  } else {  // onsite (beta)
+    mat_b.SubMatrix(nlb+1, nlb+lc, 1, 1) = cs;
+  }
+  double sign = 1.;
+  if (sb && (nla+lc)%2 == 1) {
+    sign = -1.;
+  }
+  double detA = (nla+lc == 0) ? 1.: mat_a.Determinant();
+  double detB = (nlb+lc == 0) ? 1.: mat_b.Determinant();
 
-  //cout << mat_a << endl;
-  //cout << mat_b << endl;
-
-  return 1.;
+  return sign * detA * detB;
 }
-
 
 CoupledBasis::~CoupledBasis() {
   lbasis = nullptr;

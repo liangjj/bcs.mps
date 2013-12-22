@@ -126,7 +126,7 @@ int main(int argc, char* argv[]){
   // prepare MPS
   MPS<Quantum> A(nsites);
 
-  for (int site = 0; site < nsites-1; ++site) {
+  for (int site = 0; site < nsites; ++site) {
     // first build right basis
     SymmetricMatrix prdm;
     prdm << rdm.SubMatrix(site+2, nsites, site+2, nsites);
@@ -139,61 +139,16 @@ int main(int argc, char* argv[]){
     CoupledBasis basis_pair(lbasis, rbasis);
     // do some thing
     A[site] = basis_pair.generate();
+    cout << A[site] << endl;
     A[site].clear();
     lbasis = std::move(rbasis);
   }
+
 
   boost::filesystem::path to_remove(mps_temp);
   boost::filesystem::remove_all(to_remove);
 
   /*
-  // prepare MPS
-  MPS<Quantum> A = allocate(nsites, M, false);
-  for (int i = 0; i < nsites-1; ++i) {
-    int site = i+1;
-    cout << "site " << i << "  index " << order[i] << endl;
-    WfnContainer* new_wfns = new WfnContainer(M);
-    
-    # pragma omp parallel default(none) shared(wfns, new_wfns, site)
-    {
-    # pragma omp for schedule(guided, 1)
-    for (int ispin = 0; ispin < wfns -> qp().size(); ++ispin) {
-      int spin = wfns -> qp()[ispin];
-    //for (int spin: wfns -> qp()) { // spin is left index
-      for (int j = 0; j < (*wfns)[spin].size(); ++j) {
-        SlaterDet* det = (*wfns)[spin][j];
-        auto wfn_ud = det -> Schmidt(site);
-        if (wfn_ud[0] != nullptr) {
-          # pragma omp critical
-          new_wfns -> push_back(wfn_ud[0], spin, j);
-        }
-        if (wfn_ud[1] != nullptr) {
-          # pragma omp critical          
-          new_wfns -> push_back(wfn_ud[1], spin, j);
-        }
-      }
-    }
-    }
-    delete wfns;
-    new_wfns -> renormalize(); // will 1. fix dimension if exceed M 2. normalize the states
-    //cout << *new_wfns << endl;
-    wfns = new_wfns;
-
-    // allocate the blocks
-    // first get the size of index space
-    auto blocks = allocate_blocks(A[i]);
-    // now fill in numbers
-    for (int ispin = 0; ispin < wfns -> qp().size(); ++ispin) {
-      int spin = wfns -> qp()[ispin];
-      for (int j = 0; j < wfns -> size(spin); ++j) {
-        (blocks[make_qindex(wfns -> lq(spin)[j], spin)])(wfns -> ld(spin)[j], 0, j) = 1.;
-      }
-    }
-    // set blocks
-    insert_blocks(A[i], blocks);
-    save_site(A, i, mps_temp.c_str());
-    A[i].clear();
-  }
 
   // a little bit different for the last site
   auto blocks = allocate_blocks(A[nsites-1]);
