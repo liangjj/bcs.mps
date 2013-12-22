@@ -107,6 +107,9 @@ private:
   // calculate possible quantum number on left, right and physical indices
   void quantum_number();
   void dimensions();
+  // compute matrix elements: given active space bits for each spin and left/right
+  // sign convention : <l_a,l_b|s_i>|r_a,r_b>, resulted basis becomes |s_1,s_2,...>
+  double overlap(const std::pair<vector<bool>, vector<bool>>, const std::pair<vector<bool>, vector<bool>>, Spin, int, int, int, int) const;
 
 public:
   // constructor

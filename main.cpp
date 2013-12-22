@@ -135,9 +135,11 @@ int main(int argc, char* argv[]){
     SchmidtBasis rbasis(natorbs, occs, thr1p, thrnp);
     cout << "Site: " << site+1 << endl;
     cout << lbasis << endl;
+    cout << rbasis << endl;    
     CoupledBasis basis_pair(lbasis, rbasis);
     // do some thing
     A[site] = basis_pair.generate();
+    A[site].clear();
     lbasis = std::move(rbasis);
   }
 

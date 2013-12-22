@@ -20,31 +20,37 @@ QSDArray<3, Quantum> CoupledBasis::generate() {
   }
 
   A.resize(Quantum::zero(), qshape, dshape, false);
-  
+  cout << A.qshape() << endl;
+  cout << "nblock = " << block.size() << endl;
   for (int i = 0; i < block.size(); ++i) {
+    cout << block[i] << endl;
     A.reserve(block[i]);
     // now fill in data
     DArray<3> dense;
     dense.reference(*(A.find(block[i]) -> second));
-    // electron numbers
-    int nla = (nsites+ql[block[i][0]])/2-lc;
-    int nlb = (nsites-ql[block[i][0]])/2-lc;
-    int nra = (nsites+qr[block[i][2]]-1)/2-rc;
-    int nrb = (nsites-qr[block[i][2]]-1)/2-rc;
-
-    SymmetricMatrix sa(nla, nla), sb(nlb, nlb);
-
+    // electron numbers, since we use the Schmidt basis of the "left behind" sites, right-hand sites, spin quantum number reverses
+    int nla = (nsites-ql[block[i][0]])/2-lc;
+    int nlb = (nsites+ql[block[i][0]])/2-lc;
+    int nra = (nsites-qr[block[i][2]]-1)/2-rc;
+    int nrb = (nsites+qr[block[i][2]]-1)/2-rc;
+    Spin s;
+    if (qp[block[i][1]] == -1) {
+      s = Spin::down;
+    } else {
+      s = Spin::up;
+    }
     auto iter_l = lbasis -> iterator(nla, nlb);
     auto iter_r = rbasis -> iterator(nra, nrb);
     int phys = qp[block[i][1]];
     assert(iter_l.size() == dense.shape()[0]);
     assert(iter_r.size() == dense.shape()[2]);
-
+    cout << nla+lc << " " << nlb+lc << " " << nra+rc << " " << nrb+rc << " " << 1-int(s) << " " << int(s) << endl;
     for (int j = 0; j < iter_l.size(); ++j) {
       for (int k = 0; k < iter_r.size(); ++k) {
+        dense(j, 0, k) = overlap(iter_l.get_pair(j), iter_r.get_pair(k), s, nla, nlb, nra, nrb);
       }
     }
-    cout << dense << endl;      
+    //cout << dense << endl;      
   }
   return std::move(A);
 }

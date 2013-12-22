@@ -204,14 +204,14 @@ void CoupledBasis::quantum_number() {
 void CoupledBasis::dimensions() {
   dp = {1, 1};
   for (int q:ql) {
-    int neleca = (nsites+q)/2 - lc;
-    int nelecb = (nsites-q)/2 - lc;
+    int neleca = (nsites-q)/2 - lc;
+    int nelecb = (nsites+q)/2 - lc;
     auto it = lbasis -> iterator(neleca, nelecb);
     dl.push_back(it.size());
   }
   for (int q:qr) {
-    int neleca = (nsites+q-1)/2 - rc;
-    int nelecb = (nsites-q-1)/2 - rc;
+    int neleca = (nsites-q-1)/2 - rc;
+    int nelecb = (nsites+q-1)/2 - rc;
     auto it = rbasis -> iterator(neleca, nelecb);
     dr.push_back(it.size());
   }
@@ -231,6 +231,88 @@ void CoupledBasis::dimensions() {
     }
   }
 }
+
+double CoupledBasis::overlap(const std::pair<vector<bool>, vector<bool>> left, const std::pair<vector<bool>, vector<bool>> right, Spin s, int nla, int nlb, int nra, int nrb) const {
+  Matrix mat_a(nla+lc, nla+lc), mat_b(nlb+lc, nlb+lc);
+  int sa = 1-int(s);
+  int sb = int(s);
+  if (cc.Storage()) { // core-core part
+    mat_a.SubMatrix(nla+1, nla+lc, nla+lc-rc+1, nla+lc) = cc;
+    mat_b.SubMatrix(nlb+1, nlb+lc, nlb+lc-rc+1, nlb+lc) = cc;
+  }
+  if (nla) {   // active-core part (alpha)
+    int count = 0;
+    for (int i = 0; i < la; ++i) {
+      if (left.first[i]) {
+        mat_a.SubMatrix(count+1, count+1, nla+lc-rc+1, nla+lc) = ac.Row(i+1);
+        ++count;
+      }
+    }   
+  }
+  if (nra) {   // core-active part (alpha)
+    int count = 0;
+    for (int i = 0; i < ra; ++i) {
+      if (right.first[i]) {
+        mat_a.SubMatrix(nla+1, nla+lc, count+sa+1, count+sa+1) = ca.Column(i+1);
+        ++count;
+      }
+    }
+  }
+  if (nla && nra) {   // active-active (alpha)
+    int count_l = 0;
+    for (int i = 0; i < la; ++i) {
+      if (left.first[i]) {
+        int count_r = 0;
+        for (int j = 0; j < ra; ++j) {
+          if (right.first[j]) {
+            mat_a(count_l+1, count_r+sa+1) = aa(i+1, j+1);
+            ++count_r;
+          }
+        }
+        ++count_l;        
+      }
+    }
+  }
+  if (nlb) {  // active-core (beta)
+    int count = 0;
+    for (int i = 0; i < la; ++i) {
+      if (left.second[i]) {
+        mat_b.SubMatrix(count+1, count+1, nlb+lc-rc+1, nlb+lc) = ac.Row(i+1);
+        ++count;
+      }
+    }
+  }
+  if (nrb) { // core-active (beta)
+    int count = 0;
+    for (int i = 0; i < ra; ++i) {
+      if (right.second[i]) {
+        mat_b.SubMatrix(nlb+1, nlb+lc, count+sb+1, count+sb+1) = ca.Column(i+1);
+        ++count;
+      }
+    }
+  }
+  if (nlb && nrb) {   // active-active (beta)
+    int count_l = 0;
+    for (int i = 0; i < la; ++i) {
+      if (left.second[i]) {
+        int count_r = 0;
+        for (int j = 0; j < ra; ++j) {
+          if (right.second[j]) {
+            mat_b(count_l+1, count_r+sb+1) = aa(i+1, j+1);
+            ++count_r;
+          }
+        }
+        ++count_l;        
+      }
+    }
+  }
+
+  //cout << mat_a << endl;
+  //cout << mat_b << endl;
+
+  return 1.;
+}
+
 
 CoupledBasis::~CoupledBasis() {
   lbasis = nullptr;
