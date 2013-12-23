@@ -4,7 +4,6 @@
 #include <cassert>
 #include <string>
 #include <sstream>      // std::istringstream
-#include <omp.h>
 
 #include "include.h"
 #include "schmidt.h"

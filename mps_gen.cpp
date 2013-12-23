@@ -1,5 +1,6 @@
 #include "schmidt.h"
 #include <cassert>
+#include <omp.h>
 
 QSDArray<3, Quantum> CoupledBasis::generate() {
   QSDArray<3, Quantum> A;
@@ -22,12 +23,10 @@ QSDArray<3, Quantum> CoupledBasis::generate() {
   A.resize(Quantum::zero(), qshape, dshape, false);
   //cout << A.qshape() << endl;
   //cout << "nblock = " << block.size() << endl;
+  # pragma omp parallel for shared(A, cout) schedule(dynamic, 1)
   for (int i = 0; i < block.size(); ++i) {
     //cout << block[i] << endl;
-    A.reserve(block[i]);
-    // now fill in data
-    DArray<3> dense;
-    dense.reference(*(A.find(block[i]) -> second));
+
     // electron numbers, since we use the Schmidt basis of the "left behind" sites, right-hand sites, spin quantum number reverses
     int nla = (nsites-ql[block[i][0]])/2-lc;
     int nlb = (nsites+ql[block[i][0]])/2-lc;
@@ -42,15 +41,18 @@ QSDArray<3, Quantum> CoupledBasis::generate() {
     auto iter_l = lbasis -> iterator(nla, nlb);
     auto iter_r = rbasis -> iterator(nra, nrb);
     int phys = qp[block[i][1]];
-    assert(iter_l.size() == dense.shape()[0]);
-    assert(iter_r.size() == dense.shape()[2]);
-    //cout << nla+lc << " " << nlb+lc << " " << nra+rc << " " << nrb+rc << " " << 1-int(s) << " " << int(s) << endl;
+    # pragma omp critical
+    A.reserve(block[i]);
+    // now fill in data
+    DArray<3> dense;
+    dense.reference(*(A.find(block[i]) -> second));
     for (int j = 0; j < iter_l.size(); ++j) {
       for (int k = 0; k < iter_r.size(); ++k) {
         dense(j, 0, k) = overlap(iter_l.get_pair(j), iter_r.get_pair(k), s, nla, nlb, nra, nrb);
       }
     }
-    //cout << dense << endl;      
+    # pragma omp critical    
+    cout << nla << " " << nlb << " " << nra << " " << nrb << endl;    
   }
   return std::move(A);
 }
