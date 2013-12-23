@@ -8,6 +8,7 @@
 
 #include "include.h"
 #include "schmidt.h"
+#include "mps_op.h"
 #include "newmat10/newmatap.h"
 #include "newmat10/newmatio.h"
 #include "boost/filesystem.hpp"
@@ -105,7 +106,7 @@ int main(int argc, char* argv[]){
   assert(argc > 1);
   double thr1p = pow(10., -7.);
   double thrnp = pow(10., -8.);
-  int M = 1000;
+  int M = 0;
   if (argc > 2) {
     thrnp = pow(10., -atoi(argv[2]));
   }
@@ -134,46 +135,19 @@ int main(int argc, char* argv[]){
     natural_orbs(prdm, occs, natorbs);
     SchmidtBasis rbasis(natorbs, occs, thr1p, thrnp);
     cout << "Site: " << site+1 << endl;
-    cout << lbasis << endl;
-    cout << rbasis << endl;    
+    cout << "Left\n" << lbasis << endl;
+    cout << "Right\n" << rbasis << endl;    
     CoupledBasis basis_pair(lbasis, rbasis);
     // do some thing
     A[site] = basis_pair.generate();
-    cout << A[site] << endl;
+    save_site(A, site, mps_temp.c_str());
     A[site].clear();
     lbasis = std::move(rbasis);
   }
 
-
-  boost::filesystem::path to_remove(mps_temp);
-  boost::filesystem::remove_all(to_remove);
-
-  /*
-
-  // a little bit different for the last site
-  auto blocks = allocate_blocks(A[nsites-1]);
-  // now fill in numbers directly
-  cout << "site " << nsites-1 << "  index " << order[nsites-1] << "(last)" << endl;
-  for (int spin: wfns -> qp()) {
-    for (int j = 0; j < wfns -> size(spin); ++j) {
-      (blocks[make_qindex(spin, 0)])(j, 0, 0) = (*wfns)[spin][j] -> get_factor();
-    }   
-  }
-  delete wfns;  
-  // set blocks 
-  insert_blocks(A[nsites-1], blocks);
-  save_site(A, nsites-1, mps_temp.c_str());
-  A[nsites-1].clear();
-  // now right-canonicalize it
-  cout << "\ncompress the state\n";
-  compress_on_disk(A, MPS_DIRECTION::Right, M, mps_temp.c_str(), true);
-
+  compress_on_disk(A, MPS_DIRECTION::Right, M, mps_temp.c_str(), true);  
   cout << "\nnow calculate entanglement entropy\n";
-  int cut = -1;
-  if (argc > 3) {
-    cut = atoi(argv[3]);
-  }
-  auto tup = Schmidt_on_disk(A, cut, mps_temp.c_str());
+  auto tup = Schmidt_on_disk(A, -1, mps_temp.c_str());
 
   SDArray<1> sc = std::get<0>(tup);
   Qshapes<Quantum> sq = std::get<1>(tup);
@@ -197,7 +171,11 @@ int main(int argc, char* argv[]){
     }
     cout << endl;
   }
-  *
+
+  boost::filesystem::path to_remove(mps_temp);
+  boost::filesystem::remove_all(to_remove);
+  return 0;
+  /*
   ofstream ofs((mps_dir+"/es").c_str());
   ofs.setf(std::ios::fixed, std::ios::floatfield);
   ofs.precision(10);
@@ -209,6 +187,5 @@ int main(int argc, char* argv[]){
     ofs << endl;
   }
   ofs.close();
-  *
   */
 }

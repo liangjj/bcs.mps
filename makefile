@@ -11,7 +11,8 @@ BINNAME = gps-mps.x
 CPPSRC	= main.cpp \
 		  mps_gen.cpp \
 		  SpinHamiltonian.cpp \
-		  schmidt.cpp
+		  schmidt.cpp \
+		  mps_op.cpp
 
 OBJ	= $(CPPSRC:.cpp=.o)
 

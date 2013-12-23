@@ -17,6 +17,3 @@
 
 # executable
 *.x
-
-# temp
-mps_op.*
