@@ -107,7 +107,7 @@ int main(int argc, char* argv[]){
   double thrnp = pow(10., -8.);
   int M = 0;
   if (argc > 2) {
-    thrnp = pow(10., -atoi(argv[2]));
+    thrnp = pow(10., -atof(argv[2]));
   }
   if (argc > 3) {
     M = atoi(argv[3]);
