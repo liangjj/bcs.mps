@@ -60,7 +60,7 @@ vector<bool> ActiveSpaceIterator::bits(uint address, int nocc, bool half) const 
 
 ActiveSpaceIterator::ActiveSpaceIterator(int _nsites, int _nex, const SchmidtBasis* _basis): nsites(_nsites), nex(_nex), basis(_basis) {
   vector<int> nfirst, nsecond; // two halves
-  for (int i = 0; i < nex; ++i) {
+  for (int i = 0; i <= nex; ++i) {
     if (i <= nsites/2 && nex-i <= nsites/2) {
       nfirst.push_back(i);
       nsecond.push_back(nex-i);
@@ -174,7 +174,9 @@ CoupledBasis::CoupledBasis(SchmidtBasis& _lbasis, SchmidtBasis& _rbasis): lbasis
   // calculate possible quantum numbers
   quantum_number();
   // calculate dimensions
-  //dimensions();
+  dimensions();
+  cout << ql << qr << endl;
+  cout << dl << dr << endl;
   // make possible block list
   //for (int i = 0; i < ql.size(); ++i) {
   //  for (int j = 0; j < qp.size(); ++j) {
@@ -217,20 +219,19 @@ void CoupledBasis::quantum_number() {
       qr.push_back(nsites-1-i);
     }
   }
-  cout << ql << qr << endl;
 }
 
 void CoupledBasis::dimensions() {
   dp = {1, 1};
   for (int q:ql) {
     int nex = -q+nsites-lc;  // number of exicatations in active space
-    //auto it = lbasis -> iterator(nex);
-    //dl.push_back(it.size());
+    auto it = lbasis -> iterator(nex);
+    dl.push_back(it.size());
   }
   for (int q:qr) {
-    int nex = -q+nsites-1-lc;
-    //auto it = rbasis -> iterator(nex);
-    //dr.push_back(it.size());
+    int nex = -q+nsites-1-rc;
+    auto it = rbasis -> iterator(nex);
+    dr.push_back(it.size());
   }
   // now if any dimension is 0, delete that quantum number and dimension
   for (int i = 0; i < dl.size(); ++i) {
