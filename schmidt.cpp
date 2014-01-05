@@ -178,16 +178,16 @@ CoupledBasis::CoupledBasis(SchmidtBasis& _lbasis, SchmidtBasis& _rbasis): lbasis
   cout << ql << qr << endl;
   cout << dl << dr << endl;
   // make possible block list
-  //for (int i = 0; i < ql.size(); ++i) {
-  //  for (int j = 0; j < qp.size(); ++j) {
-  //    for (int k = 0; k < qr.size(); ++k) {
-  //      if (ql[i]+qp[j] == qr[k]) {
-  //        IVector<3> temp = {i, j, k};
-  //        block.push_back(temp);
-  //      }
-  //    }
-  //  }
-  //}
+  for (int i = 0; i < ql.size(); ++i) {
+    for (int j = 0; j < qp.size(); ++j) {
+      for (int k = 0; k < qr.size(); ++k) {
+        if (ql[i]+qp[j] == qr[k]) {
+          IVector<3> temp = {i, j, k};
+          block.push_back(temp);
+        }
+      }
+    }
+  }
 }
 
 void CoupledBasis::contract1p() {

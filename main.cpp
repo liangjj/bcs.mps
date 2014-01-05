@@ -162,8 +162,6 @@ int main(int argc, char* argv[]){
     cout << "Right\n" << rbasis << endl;
 
     CoupledBasis basis_pair(lbasis, rbasis);
-    //assert(0);
-
     // do some thing
     //A[site] = basis_pair.generate();
     //save_site(A, site, mps_temp.c_str());
