@@ -160,8 +160,9 @@ int main(int argc, char* argv[]){
     
     cout << "Site: " << site+1 << endl;
     cout << "Left\n" << lbasis << endl;
-    cout << "Right\n" << rbasis << endl;    
+    cout << "Right\n" << rbasis << endl;
     assert(0);
+
     CoupledBasis basis_pair(lbasis, rbasis);
     // do some thing
     A[site] = basis_pair.generate();

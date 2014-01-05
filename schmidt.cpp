@@ -94,11 +94,11 @@ std::pair<vector<bool>, vector<bool>> ActiveSpaceIterator::get_pair(int i) const
 SchmidtBasis::SchmidtBasis(const Matrix& nat_orbs, const vector<double>& occ, double thr1p, double thrnp): thr(thrnp) {
   assert(nat_orbs.Ncols() == occ.size());
   vector<int> idx_c, idx_a;
-  for (auto it = occ.begin(); it != occ.end(); ++it) {
-    if (1. - *it < thr1p) {
-      idx_c.push_back((int)(it-occ.begin()));
-    } else if (*it > thr1p) {
-      idx_a.push_back((int)(it-occ.begin()));
+  for (int i = 0; i < occ.size(); ++i) {
+    if (1-occ[i] < thr1p) {
+      idx_c.push_back(i);
+    } else if (occ[i] > thr1p) {
+      idx_a.push_back(i);
     }
   }
   core.ReSize(nat_orbs.Nrows(), idx_c.size());
