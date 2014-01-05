@@ -32,9 +32,8 @@ private:
   vector<vector<bool>> list;
 
   // private functions: internal conversion
-  // FIXME do I need this?
   uint addr(const vector<bool>&) const;  // bits -> address
-  vector<bool> bits(uint address, int nocc = -1, bool half = false) const;         // address to bits
+  vector<bool> bits(uint address, int nocc = -1, bool half = false) const;  // address to bits
 
 public:
   // constructor
@@ -75,7 +74,7 @@ public:
   double get_weight(const vector<bool>&, int shift = 0) const;
 
   // iterators
-  ActiveSpaceIterator iterator(int); // FIXME rewrite iterator class later
+  ActiveSpaceIterator iterator(int);
 
   // member acess
   const Matrix get_core() const {  return std::move(core);}
