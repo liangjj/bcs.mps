@@ -250,99 +250,61 @@ void CoupledBasis::dimensions() {
   }
 }
 
-double CoupledBasis::overlap(const std::pair<vector<bool>, vector<bool>> left, const std::pair<vector<bool>, vector<bool>> right, Spin s, int nla, int nlb, int nra, int nrb) const {
-  Matrix mat_a(nla+lc, nla+lc), mat_b(nlb+lc, nlb+lc);
-  int sa = 1-int(s);
-  int sb = int(s);
+double CoupledBasis::overlap(const vector<bool>& left, const vector<bool>& right, Spin s, int nl, int nr) const {
+  // we assume the number of orbitals are the same, to enhance performance
+  // if the numbers are different, the overlap is 0, but we will get error here
+  int ns = 2-int(s)*2;
+  assert(nl = nr + ns);
+  Matrix mat(nl+lc, nl+lc);
   if (cc.Storage()) { // core-core part
-    mat_a.SubMatrix(nla+1, nla+lc, nla+lc-rc+1, nla+lc) = cc;
-    mat_b.SubMatrix(nlb+1, nlb+lc, nlb+lc-rc+1, nlb+lc) = cc;
+    mat.SubMatrix(nl+1, nl+lc, nl+lc-rc+1 , nl+lc) = cc;
   }
-  if (nla) {   // active-core part (alpha)
+  if (nl) { // active-core part
     int count = 0;
     for (int i = 0; i < la; ++i) {
-      if (left.first[i]) {
-        mat_a.SubMatrix(count+1, count+1, nla+lc-rc+1, nla+lc) = ac.Row(i+1);
-        if (sa) {
-          mat_a(count+1, 1) = as(i+1, 1);
+      if (left[i]) {
+        mat.SubMatrix(count+1, count+1, nl+lc-rc+1, nl+lc) = ac.Row(i+1);
+        ++count;
+        if (ns) {
+          mat(count+1, 1) = as(i+1, 1);
+          mat(count+1, 2) = as(i+1, 2);
         }
-        ++count;
-      }
-    }   
-  }
-  if (nra) {   // core-active part (alpha)
-    int count = 0;
-    for (int i = 0; i < ra; ++i) {
-      if (right.first[i]) {
-        mat_a.SubMatrix(nla+1, nla+lc, count+sa+1, count+sa+1) = ca.Column(i+1);
-        ++count;
       }
     }
   }
-  if (nla && nra) {   // active-active (alpha)
+  if (nr) {
+    int count = 0;
+    for (int i = 0; i < ra; ++i) {  // core-active part
+      if (right[i]) {
+        mat.SubMatrix(nl+1, nl+lc, count+ns+1, count+ns+1) = ca.Column(i+1);
+        ++count;        
+      }
+    }
+  }
+  if (nl && nr) {  // active-active part
     int count_l = 0;
     for (int i = 0; i < la; ++i) {
-      if (left.first[i]) {
+      if (left[i]) {
         int count_r = 0;
         for (int j = 0; j < ra; ++j) {
-          if (right.first[j]) {
-            mat_a(count_l+1, count_r+sa+1) = aa(i+1, j+1);
+          if (right[j]) {
+            mat(count_l+1, count_r+ns+1) = aa(i+1, j+1);
             ++count_r;
           }
         }
-        ++count_l;        
+        ++count_l;
       }
     }
   }
-  if (nlb) {  // active-core (beta)
-    int count = 0;
-    for (int i = 0; i < la; ++i) {
-      if (left.second[i]) {
-        mat_b.SubMatrix(count+1, count+1, nlb+lc-rc+1, nlb+lc) = ac.Row(i+1);
-        if (sb) {
-          mat_b(count+1, 1) = as(i+1, 1);
-        }
-        ++count;
-      }
-    }
-  }
-  if (nrb) { // core-active (beta)
-    int count = 0;
-    for (int i = 0; i < ra; ++i) {
-      if (right.second[i]) {
-        mat_b.SubMatrix(nlb+1, nlb+lc, count+sb+1, count+sb+1) = ca.Column(i+1);
-        ++count;
-      }
-    }
-  }
-  if (nlb && nrb) {   // active-active (beta)
-    int count_l = 0;
-    for (int i = 0; i < la; ++i) {
-      if (left.second[i]) {
-        int count_r = 0;
-        for (int j = 0; j < ra; ++j) {
-          if (right.second[j]) {
-            mat_b(count_l+1, count_r+sb+1) = aa(i+1, j+1);
-            ++count_r;
-          }
-        }
-        ++count_l;        
-      }
-    }
-  }
-  if (sa) {  // onsite (alpha)
-    mat_a.SubMatrix(nla+1, nla+lc, 1, 1) = cs;
-  } else {  // onsite (beta)
-    mat_b.SubMatrix(nlb+1, nlb+lc, 1, 1) = cs;
-  }
-  double sign = 1.;
-  if (sb && (nla+lc)%2 == 1) {
-    sign = -1.;
-  }
-  double detA = (nla+lc == 0) ? 1.: mat_a.Determinant();
-  double detB = (nlb+lc == 0) ? 1.: mat_b.Determinant();
 
-  return sign * detA * detB;
+  if (ns) {
+    mat.SubMatrix(nl+1, nl+lc, 1, 2) = cs;
+  }
+
+  int sign = ((nr+rc)%2 == 0) ? 1:-1;
+  double det = (nl+lc == 0) ? 1.: mat.Determinant();
+  
+  return sign * det;
 }
 
 CoupledBasis::~CoupledBasis() {
