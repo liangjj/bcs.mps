@@ -26,7 +26,7 @@ const string temp_dir = "/scratch/gpfs/boxiao/MPSTemp";
 using namespace btas;
 using namespace mpsxx;
 
-void permute(Matrix& orbs, vector<int>& order) {
+void permute(Matrix& orbs, const vector<int>& order) {
   Matrix orbs_i = orbs;
   for (int i = 0; i < order.size(); ++i) {
     orbs.Row(i+1) = orbs_i.Row(order[i]);
@@ -39,13 +39,15 @@ Matrix read_input(char* file) {
   istringstream is(line);
   std::getline(in, line);  // the first line is an explanation of the file.
     
-  int nsites, norbs;
+  int nsites;
   std::getline(in, line);
   is.str(line);
-  is >> nsites >> norbs;
+  is >> nsites;
   std::getline(in, line);
   
   vector<int> order;
+  
+  // input site order
   if (line.compare("default") == 0) {
     for (int i = 0; i < nsites; ++i) {
       order.push_back(i+1);
@@ -60,15 +62,24 @@ Matrix read_input(char* file) {
     }
     assert(order.size() == nsites);
   }
-  Matrix orbs(nsites, norbs);
+
+  Matrix u(nsites, nsites), v(nsites, nsites); // u and v
   double temp;
-  for (int i = 0; i < norbs; i++) {
+  for (int i = 0; i < nsites; i++) {
     for (int j = 0; j < nsites; j++) {
       in >> temp;
-      orbs(j+1, i+1) = temp;
+      u(j+1, i+1) = temp;
+    }
+    for (int j = 0; j < nsites; j++) {
+      in >> temp;
+      v(j+1, i+1) = temp;
     }
   }
-  permute(orbs, order);
+  permute(u, order);
+  permute(v, order);
+  Matrix orbs(nsites*2, nsites);
+  orbs.Rows(1, nsites) = u;
+  orbs.Rows(nsites+1, nsites*2) = v;
   return std::move(orbs);
 }
 
@@ -89,10 +100,21 @@ void banner() {
   cout << "-----------------------------------------------------------------------\n\n";
 }
 
-void natural_orbs(const SymmetricMatrix& rdm, vector<double>& occs, Matrix& orbs) {
+void natural_orbs(const SymmetricMatrix& rho, const SymmetricMatrix& kappa, vector<double>& occs, Matrix& orbs) {
   occs.clear();
-  DiagonalMatrix D;
-  Jacobi(rdm, D, orbs);
+  int nsites = rho.Nrows();
+  
+  DiagonalMatrix D, eye(nsites);
+  Matrix V;
+  eye = 1.;
+
+  SymmetricMatrix grdm(nsites*2);
+  grdm.SubMatrix(1, nsites, 1, nsites) = eye - rho;
+  grdm.SubMatrix(nsites+1, nsites*2, 1, nsites) = kappa;
+  grdm.SubMatrix(1, nsites, nsites+1, nsites*2) = kappa;
+  grdm.SubMatrix(nsites+1, nsites*2, nsites+1, nsites*2) = rho;
+
+  Jacobi(grdm, D, orbs);
   for (int i = 0; i < D.Nrows(); ++i) {
     occs.push_back(D(i+1, i+1));
   }
@@ -115,27 +137,31 @@ int main(int argc, char* argv[]){
   banner();
   string mps_temp = mktmpdir(temp_dir);
   // read input file
-  Matrix coefs = read_input(argv[1]);
-  int nsites = coefs.Nrows();
-  int norbs = coefs.Ncols();
+  Matrix coefs = read_input(argv[1]); // coefficients: upper-half u, lower-half v
+  int nsites = coefs.Nrows()/2;
+  int norbs = nsites;
   // density matrix
-  SymmetricMatrix rdm;
-  rdm << coefs * coefs.t();
-  vector<double> occs(norbs, 1.);
+  SymmetricMatrix rho, kappa;
+  rho << coefs.Rows(nsites+1, nsites*2) * coefs.Rows(nsites+1, nsites*2).t(); // \rho = VV^t
+  kappa << coefs.Rows(1, nsites) * coefs.Rows(nsites+1, nsites*2).t();  // \kappa = UV^t
+  vector<double> occs(nsites, 1.);
   SchmidtBasis lbasis(coefs, occs, thr1p, thrnp);
   // prepare MPS
   MPS<Quantum> A(nsites);
-
   for (int site = 0; site < nsites; ++site) {
     // first build right basis
-    SymmetricMatrix prdm;
-    prdm << rdm.SubMatrix(site+2, nsites, site+2, nsites);
+    SymmetricMatrix prho, pkappa;
+    prho << rho.SubMatrix(site+2, nsites, site+2, nsites);
+    pkappa << kappa.SubMatrix(site+2, nsites, site+2, nsites);
     Matrix natorbs;
-    natural_orbs(prdm, occs, natorbs);
+    natural_orbs(prho, pkappa, occs, natorbs);
+    cout << natorbs << endl;
     SchmidtBasis rbasis(natorbs, occs, thr1p, thrnp);
+    
     cout << "Site: " << site+1 << endl;
     cout << "Left\n" << lbasis << endl;
     cout << "Right\n" << rbasis << endl;    
+    assert(0);
     CoupledBasis basis_pair(lbasis, rbasis);
     // do some thing
     A[site] = basis_pair.generate();
@@ -144,6 +170,7 @@ int main(int argc, char* argv[]){
     lbasis = std::move(rbasis);
   }
 
+  /*
   compress_on_disk(A, MPS_DIRECTION::Right, M, mps_temp.c_str(), true);  
   cout << "\nnow calculate entanglement entropy\n";
   auto tup = Schmidt_on_disk(A, -1, mps_temp.c_str());
@@ -174,6 +201,7 @@ int main(int argc, char* argv[]){
   boost::filesystem::path to_remove(mps_temp);
   boost::filesystem::remove_all(to_remove);
   return 0;
+  */
   /*
   ofstream ofs((mps_dir+"/es").c_str());
   ofs.setf(std::ios::fixed, std::ios::floatfield);
@@ -187,4 +215,5 @@ int main(int argc, char* argv[]){
   }
   ofs.close();
   */
+  
 }

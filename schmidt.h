@@ -71,7 +71,7 @@ public:
   // get properties
   int ncore() const {  return core.Ncols();}
   int nactive() const {  return active.Ncols();}
-  int nsites() const { return core.Nrows();}
+  int nsites() const { return core.Nrows()/2;}
   double get_thr() const {  return thr;}
   double get_weight(const vector<bool>&) const;
 
