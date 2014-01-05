@@ -1,7 +1,7 @@
 #include "schmidt.h"
 #include <cassert>
 #include <omp.h>
-
+/*
 QSDArray<3, Quantum> CoupledBasis::generate() {
   QSDArray<3, Quantum> A;
   // build qshape, dshape basically transform from the data we already have
@@ -56,3 +56,4 @@ QSDArray<3, Quantum> CoupledBasis::generate() {
   }
   return std::move(A);
 }
+*/

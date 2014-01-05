@@ -155,19 +155,19 @@ int main(int argc, char* argv[]){
     pkappa << kappa.SubMatrix(site+2, nsites, site+2, nsites);
     Matrix natorbs;
     natural_orbs(prho, pkappa, occs, natorbs);
-    cout << natorbs << endl;
     SchmidtBasis rbasis(natorbs, occs, thr1p, thrnp);
     
     cout << "Site: " << site+1 << endl;
     cout << "Left\n" << lbasis << endl;
     cout << "Right\n" << rbasis << endl;
-    assert(0);
 
     CoupledBasis basis_pair(lbasis, rbasis);
+    //assert(0);
+
     // do some thing
-    A[site] = basis_pair.generate();
-    save_site(A, site, mps_temp.c_str());
-    A[site].clear();
+    //A[site] = basis_pair.generate();
+    //save_site(A, site, mps_temp.c_str());
+    //A[site].clear();
     lbasis = std::move(rbasis);
   }
 

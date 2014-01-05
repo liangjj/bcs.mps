@@ -24,26 +24,25 @@ class SchmidtBasis;
 
 class ActiveSpaceIterator {
 private:
-  // number of sites, occupations alpha and beta
-  int nsites, noccA, noccB;
+  // number of sites, number of excititations needed
+  int nsites, nex;
   // pointer to the parent Schmidt basis
   const SchmidtBasis* basis;
-  // stores all possible indices, alpha and beta spin
-  vector<pair<uint, uint>> list;
+  // stores all possible indices, first and second half (temp)
+  vector<vector<bool>> list;
 
   // private functions: internal conversion
+  // FIXME do I need this?
   uint addr(const vector<bool>&) const;  // bits -> address
-  vector<bool> bits(uint, Spin) const;         // address to bits
+  vector<bool> bits(uint address, int nocc = -1, bool half = false) const;         // address to bits
 
 public:
   // constructor
-  ActiveSpaceIterator(int, int, int, const SchmidtBasis*);
+  ActiveSpaceIterator(int, int, const SchmidtBasis*);
 
   // iterator behaviors
-  std::pair<vector<bool>, vector<bool>> get_pair(int i) const;
-  int size() const {
-    return list.size();
-  }
+  vector<bool> get_config(int i) const {  return std::move(list[i]);}
+  int size() const {  return list.size();}
 
   // destructor
   ~ActiveSpaceIterator() {  basis = nullptr;}
@@ -58,7 +57,7 @@ private:
   // threshold to discard the Slater determinant
   double thr;
   // store iterators
-  map<vector<int>, ActiveSpaceIterator> iterators;
+  map<int, ActiveSpaceIterator> iterators;
 
 public:
   // constructors
@@ -71,12 +70,12 @@ public:
   // get properties
   int ncore() const {  return core.Ncols();}
   int nactive() const {  return active.Ncols();}
-  int nsites() const { return core.Nrows()/2;}
+  int nsites() const {  return core.Nrows()/2;}
   double get_thr() const {  return thr;}
-  double get_weight(const vector<bool>&) const;
+  double get_weight(const vector<bool>&, int shift = 0) const;
 
   // iterators
-  ActiveSpaceIterator iterator(int, int);
+  ActiveSpaceIterator iterator(int); // FIXME rewrite iterator class later
 
   // member acess
   const Matrix get_core() const {  return std::move(core);}
@@ -93,7 +92,7 @@ private:
   // left and right basis of the site
   SchmidtBasis *lbasis, *rbasis;
   // Matrix elements between orbitals
-  Matrix cc, ac, ca, aa, cs, as; // c - core, a - active, s - site
+  Matrix cc, ac, ca, aa, cs, as; // c - core, a - active, s - site (two columns a_{i\up}^\dagger a_{i\down})
   // number of sites (left)
   int nsites;
   // left/right core/active space size

@@ -34,15 +34,19 @@ uint ActiveSpaceIterator::addr(const vector<bool>& bits) const {
   return address;
 }
 
-vector<bool> ActiveSpaceIterator::bits(uint address, Spin s) const {
+vector<bool> ActiveSpaceIterator::bits(uint address, int nocc, bool half) const {
   vector<bool> temp_bits;
-  int _nocc;
-  if (s == Spin::up) {
-    _nocc = noccA;
+  int _nocc, _nsites = nsites;
+  if (nocc >= 0) {
+    _nocc = nocc;
   } else {
-    _nocc = noccB;
+    _nocc = nex;
   }
-  for (int i = nsites-1; i >= 0; --i) {
+  if (half) {
+    _nsites /= 2;
+  }
+
+  for (int i = _nsites-1; i >= 0; --i) {
     if (address >= choose(i, _nocc)) {
       temp_bits.push_back(true);
       address -= choose(i, _nocc--);
@@ -54,41 +58,48 @@ vector<bool> ActiveSpaceIterator::bits(uint address, Spin s) const {
   return std::move(temp_bits);
 }
 
-ActiveSpaceIterator::ActiveSpaceIterator(int _nsites, int _noccA, int _noccB, const SchmidtBasis* _basis): nsites(_nsites), noccA(_noccA), noccB(_noccB), basis(_basis) {
-  // maximum indices
-  uint maxA = choose(nsites, noccA);
-  uint maxB = choose(nsites, noccB);
-  assert(maxA != 0 && maxB != 0);
-  double threshold = basis -> get_thr();
-  // first do one iteration to find the possible indices for each spin
-  map<uint, double> weightA, weightB;
-  for (uint i = 0; i < maxA; ++i) {
-    double w = basis -> get_weight(bits(i, Spin::up));
-    if (w > threshold) {
-      weightA.insert(std::pair<uint, double>(i, w));
-    }
-  }
-  for (uint i = 0; i < maxB; ++i) {
-    double w = basis -> get_weight(bits(i, Spin::down));
-    if (w > threshold) {
-      weightB.insert(std::pair<uint, double>(i, w));
+ActiveSpaceIterator::ActiveSpaceIterator(int _nsites, int _nex, const SchmidtBasis* _basis): nsites(_nsites), nex(_nex), basis(_basis) {
+  vector<int> nfirst, nsecond; // two halves
+  for (int i = 0; i < nex; ++i) {
+    if (i <= nsites/2 && nex-i <= nsites/2) {
+      nfirst.push_back(i);
+      nsecond.push_back(nex-i);
     }
   }
 
-  // the second stage: find possible pairs
-  for (auto itA = weightA.cbegin(); itA != weightA.cend(); ++itA) {
-    for (auto itB = weightB.cbegin(); itB != weightB.cend(); ++itB) {
-      if (itA->second * itB->second > threshold) {
-        list.push_back(std::pair<uint, uint>(itA->first, itB->first));
+  double threshold = basis -> get_thr();  
+  for (int i = 0; i < nfirst.size(); ++i) {
+    // maximum indices    
+    uint max_first = choose(nsites/2, nfirst[i]);
+    uint max_second = choose(nsites/2, nsecond[i]);
+    assert(max_first != 0 && max_second != 0);
+    map<vector<bool>, double> weight_first, weight_second;
+    // first do one iteration to find the possible indices for each spin    
+    for (uint j = 0; j < max_first; ++j) {
+      vector<bool> bit_rep = bits(j, nfirst[i], true);
+      double w = basis -> get_weight(bit_rep, 0);
+      if (w > threshold) {
+        weight_first.insert(std::pair<vector<bool>, double>(bit_rep, w));
+      }
+    }
+    for (uint j = 0; j < max_second; ++j) {
+      vector<bool> bit_rep = bits(j, nsecond[i], true);      
+      double w = basis -> get_weight(bit_rep, nsites/2);
+      if (w > threshold) {
+        weight_second.insert(std::pair<vector<bool>, double>(bit_rep, w));
+      }
+    }
+    // the second stage: find possible pairs
+    for (auto it1 = weight_first.cbegin(); it1 != weight_first.cend(); ++it1) {
+      for (auto it2 = weight_second.cbegin(); it2 != weight_second.cend(); ++it2) {
+        if (it1->second * it2->second > threshold) {
+          vector<bool> merge = it1->first;
+          merge.insert(merge.end(), it2->first.begin(), it2->first.end());
+          list.push_back(merge);
+        }
       }
     }
   }
-}
-
-std::pair<vector<bool>, vector<bool>> ActiveSpaceIterator::get_pair(int i) const {
-  auto bitsA = bits(list[i].first, Spin::up);
-  auto bitsB = bits(list[i].second, Spin::down);
-  return std::pair<vector<bool>, vector<bool>>(bitsA, bitsB);
 }
 
 SchmidtBasis::SchmidtBasis(const Matrix& nat_orbs, const vector<double>& occ, double thr1p, double thrnp): thr(thrnp) {
@@ -110,6 +121,10 @@ SchmidtBasis::SchmidtBasis(const Matrix& nat_orbs, const vector<double>& occ, do
     active.Column(i+1) << nat_orbs.Column(idx_a[i]+1);
     weight.push_back(occ.at(idx_a[i]));
   }
+  assert(weight.size() % 2 == 0);
+  for (int i = 0; i < weight.size(); ++i) {
+    assert(fabs(weight[i] + weight[idx_a.size()-1-i]-1.) < 1e-12);
+  }
 }
 
 std::ostream& operator <<(std::ostream& os, const SchmidtBasis& basis) {
@@ -126,26 +141,25 @@ std::ostream& operator <<(std::ostream& os, const SchmidtBasis& basis) {
   return os;
 }
 
-double SchmidtBasis::get_weight(const vector<bool>& bits) const {
+double SchmidtBasis::get_weight(const vector<bool>& bits, int shift) const {
   double w = 1.;
   for (int i = 0; i < bits.size(); ++i) {
     if (bits[i]) {
-      w *= weight[i];
+      w *= weight[shift+i];
     } else {
-      w *= 1.-weight[i];
+      w *= 1.-weight[shift+i];
     }
   }
   return w;
 }
 
-ActiveSpaceIterator SchmidtBasis::iterator(int noccA, int noccB) { // noccs of active space
-  vector<int> occs = {noccA, noccB};
-  auto it = iterators.find(occs);
+ActiveSpaceIterator SchmidtBasis::iterator(int nex) { // occupation number of active space
+  auto it = iterators.find(nex);
   if (it == iterators.end()) {
-    ActiveSpaceIterator asi(nactive(), noccA, noccB, this);
-    iterators.insert(std::pair<vector<int>, ActiveSpaceIterator>(occs, std::move(asi)));
+    ActiveSpaceIterator asi(nactive(), nex, this);
+    iterators.insert(std::pair<int, ActiveSpaceIterator>(nex, std::move(asi)));
   }
-  return std::move(iterators.at(occs));  
+  return std::move(iterators.at(nex));
 }
 
 CoupledBasis::CoupledBasis(SchmidtBasis& _lbasis, SchmidtBasis& _rbasis): lbasis(&_lbasis),  rbasis(&_rbasis) {
@@ -160,60 +174,63 @@ CoupledBasis::CoupledBasis(SchmidtBasis& _lbasis, SchmidtBasis& _rbasis): lbasis
   // calculate possible quantum numbers
   quantum_number();
   // calculate dimensions
-  dimensions();
+  //dimensions();
   // make possible block list
-  for (int i = 0; i < ql.size(); ++i) {
-    for (int j = 0; j < qp.size(); ++j) {
-      for (int k = 0; k < qr.size(); ++k) {
-        if (ql[i]+qp[j] == qr[k]) {
-          IVector<3> temp = {i, j, k};
-          block.push_back(temp);
-        }
-      }
-    }
-  }
+  //for (int i = 0; i < ql.size(); ++i) {
+  //  for (int j = 0; j < qp.size(); ++j) {
+  //    for (int k = 0; k < qr.size(); ++k) {
+  //      if (ql[i]+qp[j] == qr[k]) {
+  //        IVector<3> temp = {i, j, k};
+  //        block.push_back(temp);
+  //      }
+  //    }
+  //  }
+  //}
 }
 
 void CoupledBasis::contract1p() {
-  cc = lbasis->get_core().Rows(2, nsites).t() * rbasis->get_core();
-  ac = lbasis->get_active().Rows(2, nsites).t() * rbasis->get_core();
-  ca = lbasis->get_core().Rows(2, nsites).t() * rbasis->get_active();
-  aa = lbasis->get_active().Rows(2, nsites).t() * rbasis->get_active();
-  cs = lbasis->get_core().Row(1).t();
-  as = lbasis->get_active().Row(1).t();
+  cc = lbasis->get_core().Rows(2, nsites).t() * rbasis->get_core().Rows(1, nsites-1)
+      + lbasis->get_core().Rows(nsites+2, nsites*2).t() * rbasis->get_core().Rows(nsites, (nsites-1) * 2);
+  ac = lbasis->get_active().Rows(2, nsites).t() * rbasis->get_core().Rows(1, nsites-1)
+      + lbasis->get_active().Rows(nsites+2, nsites*2).t() * rbasis->get_core().Rows(nsites, (nsites-1) * 2);
+  ca = lbasis->get_core().Rows(2, nsites).t() * rbasis->get_active().Rows(1, nsites-1)
+      + lbasis->get_core().Rows(nsites+2, nsites*2).t() * rbasis->get_active().Rows(nsites, (nsites-1) * 2);
+  aa = lbasis->get_active().Rows(2, nsites).t() * rbasis->get_active().Rows(1, nsites-1)
+      + lbasis->get_active().Rows(nsites+2, nsites*2).t() * rbasis->get_active().Rows(nsites, (nsites-1) * 2);
+  cs.ReSize(lc, 2);
+  as.ReSize(la, 2);
+  cs.Column(1) << lbasis->get_core().Row(nsites+1).t();
+  cs.Column(2) << lbasis->get_core().Row(1).t();
+  as.Column(1) << lbasis->get_active().Row(nsites+1).t();
+  as.Column(2) << lbasis->get_active().Row(1).t();
 }
 
 void CoupledBasis::quantum_number() {
   qp = {-1, 1};
-  // nelec is the same as nsites (left)
-  int nelec_l = nsites - 2*lc;
-  int nelec_r = nsites - 2*rc - 1;
-  
-  for (int ka = 0; ka <= la; ++ka) {
-    if (nelec_l-ka >= 0 && nelec_l-ka <= la) {
-      ql.push_back(2*ka - nelec_l);
+  for (int i = lc; i <= lc+la; ++i) {
+    if (i%2 == 0) {
+      ql.push_back(nsites-i);
+    }
+  } // quantum numbers on the left of cut
+  for (int i = rc; i <= rc+ra; ++i) {
+    if (i%2 == 0) {
+      qr.push_back(nsites-1-i);
     }
   }
-  for (int ka = 0; ka <= ra; ++ka) {
-    if (nelec_r-ka >= 0 && nelec_r-ka <= ra) {
-      qr.push_back(2*ka - nelec_r);
-    }
-  }
+  cout << ql << qr << endl;
 }
 
 void CoupledBasis::dimensions() {
   dp = {1, 1};
   for (int q:ql) {
-    int neleca = (nsites-q)/2 - lc;
-    int nelecb = (nsites+q)/2 - lc;
-    auto it = lbasis -> iterator(neleca, nelecb);
-    dl.push_back(it.size());
+    int nex = -q+nsites-lc;  // number of exicatations in active space
+    //auto it = lbasis -> iterator(nex);
+    //dl.push_back(it.size());
   }
   for (int q:qr) {
-    int neleca = (nsites-q-1)/2 - rc;
-    int nelecb = (nsites+q-1)/2 - rc;
-    auto it = rbasis -> iterator(neleca, nelecb);
-    dr.push_back(it.size());
+    int nex = -q+nsites-1-lc;
+    //auto it = rbasis -> iterator(nex);
+    //dr.push_back(it.size());
   }
   // now if any dimension is 0, delete that quantum number and dimension
   for (int i = 0; i < dl.size(); ++i) {
