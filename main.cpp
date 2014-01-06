@@ -162,14 +162,14 @@ int main(int argc, char* argv[]){
     cout << "Right\n" << rbasis << endl;
 
     CoupledBasis basis_pair(lbasis, rbasis);
-    // do some thing
     A[site] = basis_pair.generate();
-    //save_site(A, site, mps_temp.c_str());
-    //A[site].clear();
+    cout << A[site] << endl;
+    save_site(A, site, mps_temp.c_str());
+    A[site].clear();
     lbasis = std::move(rbasis);
   }
 
-  /*
+  
   compress_on_disk(A, MPS_DIRECTION::Right, M, mps_temp.c_str(), true);  
   cout << "\nnow calculate entanglement entropy\n";
   auto tup = Schmidt_on_disk(A, -1, mps_temp.c_str());
@@ -200,7 +200,6 @@ int main(int argc, char* argv[]){
   boost::filesystem::path to_remove(mps_temp);
   boost::filesystem::remove_all(to_remove);
   return 0;
-  */
   /*
   ofstream ofs((mps_dir+"/es").c_str());
   ofs.setf(std::ios::fixed, std::ios::floatfield);

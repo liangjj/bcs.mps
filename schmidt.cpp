@@ -67,7 +67,7 @@ ActiveSpaceIterator::ActiveSpaceIterator(int _nsites, int _nex, const SchmidtBas
     }
   }
 
-  double threshold = basis -> get_thr();  
+  double threshold = basis -> get_thr();
   for (int i = 0; i < nfirst.size(); ++i) {
     // maximum indices    
     uint max_first = choose(nsites/2, nfirst[i]);

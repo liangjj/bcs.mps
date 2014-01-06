@@ -21,13 +21,12 @@ QSDArray<3, Quantum> CoupledBasis::generate() {
   }
 
   A.resize(Quantum::zero(), qshape, dshape, false);
-  //cout << "qshape = " << A.qshape() << endl;
-  //cout << "dshape = " << A.dshape() << endl;
-  //cout << "nblock = " << block.size() << endl;
+  cout << "qshape = " << A.qshape() << endl;
+  cout << "dshape = " << A.dshape() << endl;
+  cout << "nblock = " << block.size() << endl << endl;
   
   // now generate these blocks
   for (int i = 0; i < block.size(); ++i) {
-    cout << block[i] << endl;
     // get information of each block
     Spin s = (qp[block[i][1]] == -1) ? (Spin::down) : (Spin::up);
     int nl = nsites - ql[block[i][0]] - lc;
@@ -40,16 +39,12 @@ QSDArray<3, Quantum> CoupledBasis::generate() {
     DArray<3> dense;
     dense.reference(*(A.find(block[i]) -> second));
     
+    # pragma omp parallel for default(shared) schedule(static)    
     for (int j = 0; j < iter_l.size(); ++j) {
       for (int k = 0; k < iter_r.size(); ++k) {
         dense(j, 0, k) = overlap(iter_l.get_config(j), iter_r.get_config(k), s, nl, nr);
       }
     }
-    /*
-    // electron numbers, since we use the Schmidt basis of the "left behind" sites, right-hand sites, spin quantum number reverses
-
-    # pragma omp parallel for default(shared) schedule(static)    
-    */
   }
   return std::move(A);
 }
