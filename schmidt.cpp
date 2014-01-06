@@ -175,8 +175,6 @@ CoupledBasis::CoupledBasis(SchmidtBasis& _lbasis, SchmidtBasis& _rbasis): lbasis
   quantum_number();
   // calculate dimensions
   dimensions();
-  cout << ql << qr << endl;
-  cout << dl << dr << endl;
   // make possible block list
   for (int i = 0; i < ql.size(); ++i) {
     for (int j = 0; j < qp.size(); ++j) {
@@ -254,7 +252,6 @@ double CoupledBasis::overlap(const vector<bool>& left, const vector<bool>& right
   // we assume the number of orbitals are the same, to enhance performance
   // if the numbers are different, the overlap is 0, but we will get error here
   int ns = 2-int(s)*2;
-  assert(nl = nr + ns);
   Matrix mat(nl+lc, nl+lc);
   if (cc.Storage()) { // core-core part
     mat.SubMatrix(nl+1, nl+lc, nl+lc-rc+1 , nl+lc) = cc;
@@ -264,11 +261,11 @@ double CoupledBasis::overlap(const vector<bool>& left, const vector<bool>& right
     for (int i = 0; i < la; ++i) {
       if (left[i]) {
         mat.SubMatrix(count+1, count+1, nl+lc-rc+1, nl+lc) = ac.Row(i+1);
-        ++count;
         if (ns) {
           mat(count+1, 1) = as(i+1, 1);
           mat(count+1, 2) = as(i+1, 2);
         }
+        ++count;        
       }
     }
   }
@@ -296,7 +293,6 @@ double CoupledBasis::overlap(const vector<bool>& left, const vector<bool>& right
       }
     }
   }
-
   if (ns) {
     mat.SubMatrix(nl+1, nl+lc, 1, 2) = cs;
   }

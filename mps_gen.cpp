@@ -1,7 +1,7 @@
 #include "schmidt.h"
 #include <cassert>
 #include <omp.h>
-/*
+
 QSDArray<3, Quantum> CoupledBasis::generate() {
   QSDArray<3, Quantum> A;
   // build qshape, dshape basically transform from the data we already have
@@ -21,39 +21,35 @@ QSDArray<3, Quantum> CoupledBasis::generate() {
   }
 
   A.resize(Quantum::zero(), qshape, dshape, false);
-  //cout << A.qshape() << endl;
+  //cout << "qshape = " << A.qshape() << endl;
+  //cout << "dshape = " << A.dshape() << endl;
   //cout << "nblock = " << block.size() << endl;
-  # pragma omp parallel for shared(A, cout) schedule(dynamic, 1)
+  
+  // now generate these blocks
   for (int i = 0; i < block.size(); ++i) {
-    //cout << block[i] << endl;
-
-    // electron numbers, since we use the Schmidt basis of the "left behind" sites, right-hand sites, spin quantum number reverses
-    int nla = (nsites-ql[block[i][0]])/2-lc;
-    int nlb = (nsites+ql[block[i][0]])/2-lc;
-    int nra = (nsites-qr[block[i][2]]-1)/2-rc;
-    int nrb = (nsites+qr[block[i][2]]-1)/2-rc;
-    Spin s;
-    if (qp[block[i][1]] == -1) {
-      s = Spin::down;
-    } else {
-      s = Spin::up;
-    }
-    auto iter_l = lbasis -> iterator(nla, nlb);
-    auto iter_r = rbasis -> iterator(nra, nrb);
-    int phys = qp[block[i][1]];
-    # pragma omp critical
+    cout << block[i] << endl;
+    // get information of each block
+    Spin s = (qp[block[i][1]] == -1) ? (Spin::down) : (Spin::up);
+    int nl = nsites - ql[block[i][0]] - lc;
+    int nr = nsites - 1 - qr[block[i][2]] - rc;
+    auto iter_l = lbasis -> iterator(nl);
+    auto iter_r = rbasis -> iterator(nr);
+    
     A.reserve(block[i]);
-    // now fill in data
+    // now fill in data    
     DArray<3> dense;
     dense.reference(*(A.find(block[i]) -> second));
+    
     for (int j = 0; j < iter_l.size(); ++j) {
       for (int k = 0; k < iter_r.size(); ++k) {
-        dense(j, 0, k) = overlap(iter_l.get_pair(j), iter_r.get_pair(k), s, nla, nlb, nra, nrb);
+        dense(j, 0, k) = overlap(iter_l.get_config(j), iter_r.get_config(k), s, nl, nr);
       }
     }
-    # pragma omp critical    
-    cout << nla << " " << nlb << " " << nra << " " << nrb << endl;    
+    /*
+    // electron numbers, since we use the Schmidt basis of the "left behind" sites, right-hand sites, spin quantum number reverses
+
+    # pragma omp parallel for default(shared) schedule(static)    
+    */
   }
   return std::move(A);
 }
-*/

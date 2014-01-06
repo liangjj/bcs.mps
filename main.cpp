@@ -163,7 +163,7 @@ int main(int argc, char* argv[]){
 
     CoupledBasis basis_pair(lbasis, rbasis);
     // do some thing
-    //A[site] = basis_pair.generate();
+    A[site] = basis_pair.generate();
     //save_site(A, site, mps_temp.c_str());
     //A[site].clear();
     lbasis = std::move(rbasis);
