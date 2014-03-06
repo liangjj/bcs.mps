@@ -3,8 +3,10 @@
 #include <algorithm>    // std::find, std::reverse
 #include <math.h>       /* sqrt */
 #include <iomanip>
+#include <boost/mpi.hpp>
 
 using std::endl;
+namespace mpi=boost::mpi;
 
 uint choose(int iN, int iR){
     if (iR < 0 || iR > iN) {
@@ -58,7 +60,11 @@ vector<bool> ActiveSpaceIterator::bits(uint address, int nocc, bool half) const 
   return std::move(temp_bits);
 }
 
-ActiveSpaceIterator::ActiveSpaceIterator(int _nsites, int _nex, const SchmidtBasis* _basis): nsites(_nsites), nex(_nex), basis(_basis) {
+void ActiveSpaceIterator::initialize(int _nsites, int _nex, const SchmidtBasis* _basis) {
+  nsites = _nsites;
+  nex = _nex;
+  basis = _basis;
+  initialized = true;
   vector<int> nfirst, nsecond; // two halves
   for (int i = 0; i <= nex; ++i) {
     if (i <= nsites/2 && nex-i <= nsites/2) {
@@ -125,6 +131,38 @@ SchmidtBasis::SchmidtBasis(const Matrix& nat_orbs, const vector<double>& occ, do
   for (int i = 0; i < weight.size(); ++i) {
     assert(fabs(weight[i] + weight[idx_a.size()-1-i]-1.) < 1e-12);
   }
+  // making iterators and compute dimensions
+  dimensions();
+  broadcast_iterators();
+}
+
+void SchmidtBasis::dimensions() {
+  for (int i = ncore(); i <= ncore() + nactive(); ++i) {
+    if (i % 2 == 0) {
+      quantums.push_back(nsites()-i);
+    }
+  }
+  mpi::communicator world;
+  dims.resize(quantums.size(), 0);
+  for (int i = 0; i < quantums.size(); ++i) {
+    int nex = q2nex(quantums[i]);
+    if (i % world.size() == world.rank()) {
+      auto it = iterator(nex);
+      dims[i] = it.size();
+    } else {
+      iterator(nex, false);
+    }
+    iterator_map.insert(std::pair<int, int>(nex, i % world.size()));
+  }
+  
+  for (int i = 0; i < dims.size(); ++i) {
+    broadcast(world, dims[i], iterator_on_rank(q2nex(quantums[i])));
+    if (dims[i] == 0) {
+      dims.erase(dims.begin()+i);
+      quantums.erase(quantums.begin()+i);
+      i -= 1;
+    }
+  }
 }
 
 std::ostream& operator <<(std::ostream& os, const SchmidtBasis& basis) {
@@ -137,6 +175,10 @@ std::ostream& operator <<(std::ostream& os, const SchmidtBasis& basis) {
     os << basis.weight[i] << "  ";
   }
   os << endl;
+  os << "Quantum Numbers" << endl;
+  os << basis.quantums << endl;
+  os << "Dimensions" << endl;
+  os << basis.dims << endl;
   //os << basis.active << endl;
   return os;
 }
@@ -153,13 +195,24 @@ double SchmidtBasis::get_weight(const vector<bool>& bits, int shift) const {
   return w;
 }
 
-ActiveSpaceIterator SchmidtBasis::iterator(int nex) { // occupation number of active space
+ActiveSpaceIterator SchmidtBasis::iterator(int nex, bool init) { // occupation number of active space
   auto it = iterators.find(nex);
   if (it == iterators.end()) {
-    ActiveSpaceIterator asi(nactive(), nex, this);
+    ActiveSpaceIterator asi;
+    if (init) {
+      asi.initialize(nactive(), nex, this);
+    }
     iterators.insert(std::pair<int, ActiveSpaceIterator>(nex, std::move(asi)));
   }
   return std::move(iterators.at(nex));
+}
+
+void SchmidtBasis::broadcast_iterators() {
+  mpi::communicator world;
+  for (int i = 0; i < quantums.size(); ++i) {
+    broadcast(world, iterators[q2nex(quantums[i])], iterator_on_rank(q2nex(quantums[i])));
+    iterators[q2nex(quantums[i])].set_basis(this);
+  }
 }
 
 CoupledBasis::CoupledBasis(SchmidtBasis& _lbasis, SchmidtBasis& _rbasis): lbasis(&_lbasis),  rbasis(&_rbasis) {
@@ -171,10 +224,14 @@ CoupledBasis::CoupledBasis(SchmidtBasis& _lbasis, SchmidtBasis& _rbasis): lbasis
   ra = rbasis->nactive();
   // contract one-particle orbitals
   contract1p();
-  // calculate possible quantum numbers
-  quantum_number();
-  // calculate dimensions
-  dimensions();
+  // possible quantum numbers
+  ql = lbasis->quantums;
+  qr = rbasis->quantums;
+  qp = {-1, 1};
+  // dimensions
+  dl = lbasis->dims;
+  dr = rbasis->dims;
+  dp = {1, 1};
   // make possible block list
   for (int i = 0; i < ql.size(); ++i) {
     for (int j = 0; j < qp.size(); ++j) {
@@ -203,49 +260,6 @@ void CoupledBasis::contract1p() {
   cs.Column(2) << lbasis->get_core().Row(1).t();
   as.Column(1) << lbasis->get_active().Row(nsites+1).t();
   as.Column(2) << lbasis->get_active().Row(1).t();
-}
-
-void CoupledBasis::quantum_number() {
-  qp = {-1, 1};
-  for (int i = lc; i <= lc+la; ++i) {
-    if (i%2 == 0) {
-      ql.push_back(nsites-i);
-    }
-  } // quantum numbers on the left of cut
-  for (int i = rc; i <= rc+ra; ++i) {
-    if (i%2 == 0) {
-      qr.push_back(nsites-1-i);
-    }
-  }
-}
-
-void CoupledBasis::dimensions() {
-  dp = {1, 1};
-  for (int q:ql) {
-    int nex = -q+nsites-lc;  // number of exicatations in active space
-    auto it = lbasis -> iterator(nex);
-    dl.push_back(it.size());
-  }
-  for (int q:qr) {
-    int nex = -q+nsites-1-rc;
-    auto it = rbasis -> iterator(nex);
-    dr.push_back(it.size());
-  }
-  // now if any dimension is 0, delete that quantum number and dimension
-  for (int i = 0; i < dl.size(); ++i) {
-    if (dl[i] == 0) {
-      dl.erase(dl.begin()+i);
-      ql.erase(ql.begin()+i);
-      i -= 1;
-    }
-  }
-  for (int i = 0; i < dr.size(); ++i) {
-    if (dr[i] == 0) {
-      dr.erase(dr.begin()+i);
-      qr.erase(qr.begin()+i);
-      i -= 1;
-    }
-  }
 }
 
 double CoupledBasis::overlap(const vector<bool>& left, const vector<bool>& right, Spin s, int nl, int nr) const {

@@ -4,19 +4,24 @@
 #include <cassert>
 #include <string>
 #include <sstream>      // std::istringstream
+#include <boost/mpi.hpp>
 
 #include "include.h"
 #include "schmidt.h"
 #include "mps_op.h"
 #include "newmat10/newmatap.h"
 #include "newmat10/newmatio.h"
+#include "newmat10/newmatutils.h"
 #include "boost/filesystem.hpp"
+#include <boost/serialization/serialization.hpp>
+#include <boost/serialization/string.hpp>
 
 using std::cout;
 using std::endl;
 using std::string;
 using std::istringstream;
 using std::ifstream;
+namespace mpi = boost::mpi;
 
 namespace btas { typedef SpinQuantum Quantum; }; // Defined as default quantum number class
 
@@ -121,6 +126,8 @@ void natural_orbs(const SymmetricMatrix& rho, const SymmetricMatrix& kappa, vect
 }
 
 int main(int argc, char* argv[]){
+  mpi::environment env(argc, argv);
+  mpi::communicator world;
   cout.setf(std::ios::fixed, std::ios::floatfield);
   cout.precision(10);
 
@@ -134,10 +141,18 @@ int main(int argc, char* argv[]){
   if (argc > 3) {
     M = atoi(argv[3]);
   }
-  banner();
-  string mps_temp = mktmpdir(temp_dir);
-  // read input file
-  Matrix coefs = read_input(argv[1]); // coefficients: upper-half u, lower-half v
+  string mps_temp;
+  Matrix coefs;
+  if (world.rank() == 0) {
+    banner();
+    mps_temp = mktmpdir(temp_dir);    
+    // read input file
+    coefs = read_input(argv[1]); // coefficients: upper-half u, lower-half v
+  }
+
+  broadcast(world, mps_temp, 0);
+  broadcast(world, coefs, 0);
+  
   int nsites = coefs.Nrows()/2;
   int norbs = nsites;
   // density matrix
@@ -148,6 +163,7 @@ int main(int argc, char* argv[]){
   SchmidtBasis lbasis(coefs, occs, thr1p, thrnp);
   // prepare MPS
   MPS<Quantum> A(nsites);
+
   for (int site = 0; site < nsites; ++site) {
     // first build right basis
     SymmetricMatrix prho, pkappa;
@@ -156,49 +172,57 @@ int main(int argc, char* argv[]){
     Matrix natorbs;
     natural_orbs(prho, pkappa, occs, natorbs);
     SchmidtBasis rbasis(natorbs, occs, thr1p, thrnp);
-    
-    cout << "Site: " << site+1 << endl;
-    cout << "Left\n" << lbasis << endl;
-    cout << "Right\n" << rbasis << endl;
+
+    if (world.rank() == 0) {    
+      cout << "Site: " << site+1 << endl;
+      cout << "Left\n" << lbasis << endl;
+      cout << "Right\n" << rbasis << endl;
+    }
 
     CoupledBasis basis_pair(lbasis, rbasis);
     A[site] = basis_pair.generate();
-    save_site(A, site, mps_temp.c_str());
-    A[site].clear();
+    if (world.rank() == 0) {
+      save_site(A, site, mps_temp.c_str());
+      A[site].clear();
+    }
     lbasis = std::move(rbasis);
   }
 
-  
-  compress_on_disk(A, MPS_DIRECTION::Right, M, mps_temp.c_str(), true);  
-  cout << "\nnow calculate entanglement entropy\n";
-  auto tup = Schmidt_on_disk(A, -1, mps_temp.c_str());
+  if (world.rank() == 0) {
+    compress_on_disk(A, MPS_DIRECTION::Right, M, mps_temp.c_str(), true);  
+    cout << "\nnow calculate entanglement entropy\n";
+    auto tup = Schmidt_on_disk(A, -1, mps_temp.c_str());
 
-  SDArray<1> sc = std::get<0>(tup);
-  Qshapes<Quantum> sq = std::get<1>(tup);
-  auto iter = sc.begin();  
-  map<int, vector<double>> coef;
-  for (int i = 0; i < sq.size(); i++) {
-    int sp = sq[i].gSz();
-    coef[sp];
-    for (auto it_d = iter -> second -> begin(); it_d != iter -> second -> end(); ++it_d) {
-      coef[sp].push_back(-2.*log(*it_d));
+    SDArray<1> sc = std::get<0>(tup);
+    Qshapes<Quantum> sq = std::get<1>(tup);
+    auto iter = sc.begin();  
+    map<int, vector<double>> coef;
+    for (int i = 0; i < sq.size(); i++) {
+      int sp = sq[i].gSz();
+      coef[sp];
+      for (auto it_d = iter -> second -> begin(); it_d != iter -> second -> end(); ++it_d) {
+        coef[sp].push_back(-2.*log(*it_d));
+      }
+      std::sort(coef[sp].begin(), coef[sp].end());
+      ++iter;    
     }
-    std::sort(coef[sp].begin(), coef[sp].end());
-    ++iter;    
+
+    cout << "Entanglement Spectra:\n";
+    for (auto it = coef.begin(); it != coef.end(); it++) {
+      cout << "Section S=" << it -> first << endl;
+      for (auto it_d = it -> second.begin(); it_d < it -> second.end(); ++it_d) {
+        cout << *it_d << "\t";
+      }
+      cout << endl;
+    }
+
+    boost::filesystem::path to_remove(mps_temp);
+    boost::filesystem::remove_all(to_remove);
   }
 
-  cout << "Entanglement Spectra:\n";
-  for (auto it = coef.begin(); it != coef.end(); it++) {
-    cout << "Section S=" << it -> first << endl;
-    for (auto it_d = it -> second.begin(); it_d < it -> second.end(); ++it_d) {
-      cout << *it_d << "\t";
-    }
-    cout << endl;
-  }
-
-  boost::filesystem::path to_remove(mps_temp);
-  boost::filesystem::remove_all(to_remove);
   return 0;
+  
+  
   /*
   ofstream ofs((mps_dir+"/es").c_str());
   ofs.setf(std::ios::fixed, std::ios::floatfield);

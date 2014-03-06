@@ -1,6 +1,8 @@
 #include "schmidt.h"
 #include <cassert>
-#include <omp.h>
+#include <boost/mpi.hpp>
+
+namespace mpi = boost::mpi;
 
 QSDArray<3, Quantum> CoupledBasis::generate() {
   QSDArray<3, Quantum> A;
@@ -21,9 +23,13 @@ QSDArray<3, Quantum> CoupledBasis::generate() {
   }
 
   A.resize(Quantum::zero(), qshape, dshape, false);
-  cout << "qshape = " << A.qshape() << endl;
-  cout << "dshape = " << A.dshape() << endl;
-  cout << "nblock = " << block.size() << endl << endl;
+  mpi::communicator world;
+
+  if (world.rank() == 0) {
+    cout << "qshape = " << A.qshape() << endl;
+    cout << "dshape = " << A.dshape() << endl;
+    cout << "nblock = " << block.size() << endl << endl;;
+  }
   
   // now generate these blocks
   for (int i = 0; i < block.size(); ++i) {
@@ -33,17 +39,58 @@ QSDArray<3, Quantum> CoupledBasis::generate() {
     int nr = nsites - 1 - qr[block[i][2]] - rc;
     auto iter_l = lbasis -> iterator(nl);
     auto iter_r = rbasis -> iterator(nr);
-    
-    A.reserve(block[i]);
-    // now fill in data    
+
+    // total size of the block
+    size_t size = dl[block[i][0]];
+    size *=  dr[block[i][2]];
+
+    // declarations
+    IVector<3> stride;
     DArray<3> dense;
-    dense.reference(*(A.find(block[i]) -> second));
+
+    if (world.rank() == 0) {
+      A.reserve(block[i]);
+      dense.reference(*(A.find(block[i]) -> second));
+      stride = dense.stride();
+    }
+    broadcast(world, stride, 0);
+
+    vector<size_t> size_procs(world.size(), size / world.size());
+    vector<size_t> shift_procs(world.size(), 0);    
+    for (int j = 0; j < size % world.size(); ++j) {
+      size_procs[j] += 1;
+    }
+    for (int j = 1; j < world.size(); ++j) {
+      shift_procs[j] = shift_procs[j-1] + size_procs[j-1];
+    }
     
-    # pragma omp parallel for default(shared) schedule(static)    
-    for (int j = 0; j < iter_l.size(); ++j) {
-      for (int k = 0; k < iter_r.size(); ++k) {
-        dense(j, 0, k) = overlap(iter_l.get_config(j), iter_r.get_config(k), s, nl, nr);
+    vector<double> my_array;
+    vector<double>::iterator my_it;
+
+    if (world.rank() == 0) {
+      my_it = dense.begin();
+    } else {
+      my_array.resize(size_procs[world.rank()]);
+      my_it = my_array.begin();
+    }
+
+    for (size_t j = shift_procs[world.rank()]; j <  shift_procs[world.rank()] + size_procs[world.rank()]; ++j) {
+      int idx_l = j / stride[0];
+      int idx_r = (j % stride[1]) / stride[2];
+      *my_it = overlap(iter_l.get_config(idx_l), iter_r.get_config(idx_r), s, nl, nr);
+      ++my_it;
+    }
+
+    if (world.rank() == 0) {
+      MPI_Request req[world.size()-1];
+      for (int j = 1; j < world.size(); ++j) {
+        MPI_Irecv(dense.data() + shift_procs[j], size_procs[j], MPI_DOUBLE, j, j, world, &req[j-1]);
       }
+      MPI_Waitall(world.size()-1, req, MPI_STATUS_IGNORE);
+    } else {
+      MPI_Request req;
+      MPI_Isend(my_array.data(), size_procs[world.rank()], MPI_DOUBLE, 0, world.rank(), world, &req);
+      MPI_Wait(&req, MPI_STATUS_IGNORE);
     }
   }
   return std::move(A);

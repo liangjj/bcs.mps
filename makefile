@@ -23,7 +23,7 @@ BRIGHT_ROOT=.
 
 BOOSTDIR=/home/boxiao/usr
 BOOSTINC=-I$(BOOSTDIR)/include
-BOOSTLIB=-L/home/boxiao/usr/lib -lboost_serialization -lboost_filesystem -lboost_system
+BOOSTLIB=-L$(BOOSTDIR)/lib -lboost_serialization -lboost_filesystem -lboost_system -lboost_mpi
 
 BTASINC=-I$(HOME)/mps/btas-master/include
 BTASLIB=-L$(HOME)/mps/btas-master/lib
@@ -35,15 +35,17 @@ INCLUDE = $(BTASINC) $(MPSXXINC) $(BOOSTINC)
 
 LIBS=-lpthread -lmkl_intel_lp64 -lmkl_sequential -lmkl_core $(BOOSTLIB) $(BTASLIB) $(NEWMATLIB) -lbtas
 
-CC	= gcc
-CXX	= g++
+#CC	= gcc
+#CXX	= g++
+CXX = mpic++
+CC = mpicc
 
 # -----------------------------------------------------------------------------
 #   Compiler & Linker flags
 # -----------------------------------------------------------------------------
-CFLAGS	= -fopenmp $(INCLUDE) -O3 -std=c++11 -D_HAS_CBLAS -D_HAS_INTEL_MKL
+CFLAGS	= $(INCLUDE) -O3 -std=c++11 -D_HAS_CBLAS -D_HAS_INTEL_MKL
 
-LDFLAGS	= -fopenmp -O3 -std=c++11
+LDFLAGS	= -O3 -std=c++11
 
 # =============================================================================
 #   Targets & Rules
