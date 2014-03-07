@@ -26,8 +26,8 @@ QSDArray<3, Quantum> CoupledBasis::generate() {
   mpi::communicator world;
 
   if (world.rank() == 0) {
-    cout << "qshape = " << A.qshape() << endl;
-    cout << "dshape = " << A.dshape() << endl;
+    //cout << "qshape = " << A.qshape() << endl;
+    //cout << "dshape = " << A.dshape() << endl;
     cout << "nblock = " << block.size() << endl << endl;;
   }
   

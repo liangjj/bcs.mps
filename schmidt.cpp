@@ -175,10 +175,8 @@ std::ostream& operator <<(std::ostream& os, const SchmidtBasis& basis) {
     os << basis.weight[i] << "  ";
   }
   os << endl;
-  os << "Quantum Numbers" << endl;
-  os << basis.quantums << endl;
-  os << "Dimensions" << endl;
-  os << basis.dims << endl;
+  os << "Quantum Numbers\t" << basis.quantums << endl;
+  os << "Dimensions\t" << basis.dims << endl;
   //os << basis.active << endl;
   return os;
 }

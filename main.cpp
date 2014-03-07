@@ -12,9 +12,12 @@
 #include "newmat10/newmatap.h"
 #include "newmat10/newmatio.h"
 #include "newmat10/newmatutils.h"
+
+#define BOOST_NO_CXX11_SCOPED_ENUMS
 #include "boost/filesystem.hpp"
 #include <boost/serialization/serialization.hpp>
 #include <boost/serialization/string.hpp>
+#include <boost/algorithm/string.hpp>
 
 using std::cout;
 using std::endl;
@@ -22,6 +25,8 @@ using std::string;
 using std::istringstream;
 using std::ifstream;
 namespace mpi = boost::mpi;
+using boost::trim;
+using boost::is_any_of;
 
 namespace btas { typedef SpinQuantum Quantum; }; // Defined as default quantum number class
 
@@ -38,9 +43,41 @@ void permute(Matrix& orbs, const vector<int>& order) {
   }
 }
 
-Matrix read_input(char* file) {
+void read_config(string file, double& thr1p, double& thrnp, int& M, bool& calc_spectra, bool& savemps) {
   string line;
-  ifstream in(file);
+  ifstream in(file.c_str());
+
+  vector<string> tokens;
+  while(std::getline(in, line)) {
+    if (line.find('!') != string::npos) {
+      boost::erase_tail(line, line.size() - line.find('!'));
+    }
+    trim(line);
+    boost::split(tokens, line, is_any_of("\t ="), boost::token_compress_on);
+    if (tokens[0].size() == 0) {
+      continue;
+    }
+    if (boost::iequals(tokens[0], "thr1p")) {
+      thr1p = atof(tokens[1].c_str());
+    } else if (boost::iequals(tokens[0], "thrnp")) {
+      thrnp = atof(tokens[1].c_str());
+    } else if (boost::iequals(tokens[0], "M")) {
+      M = atoi(tokens[1].c_str());
+    } else if (boost::iequals(tokens[0], "nospectra")) {
+      calc_spectra = false;
+    } else if (boost::iequals(tokens[0], "savemps")) {
+      savemps = true;
+    } else {
+      cout << "\nUnrecognized option in config file:" << endl;
+      cout << "\t" << tokens[0] << endl;
+      abort();
+    }
+  }
+}
+
+Matrix read_orbitals(string file) {
+  string line;
+  ifstream in(file.c_str());
   istringstream is(line);
   std::getline(in, line);  // the first line is an explanation of the file.
     
@@ -127,31 +164,33 @@ void natural_orbs(const SymmetricMatrix& rho, const SymmetricMatrix& kappa, vect
 
 int main(int argc, char* argv[]){
   mpi::environment env(argc, argv);
-  mpi::communicator world;
   cout.setf(std::ios::fixed, std::ios::floatfield);
   cout.precision(10);
 
   assert(argc > 1);
-  double thr1p = pow(10., -7.);
-  double thrnp = pow(10., -8.);
+
+  // set defaults
+  double thr1p = 1e-7, thrnp = 1e-8;
   int M = 0;
-  if (argc > 2) {
-    thrnp = pow(10., -atof(argv[2]));
-  }
-  if (argc > 3) {
-    M = atoi(argv[3]);
-  }
+  bool calc_spectra = true, savemps = false;
+  
   string mps_temp;
   Matrix coefs;
+
+  mpi::communicator world;  
   if (world.rank() == 0) {
     banner();
     mps_temp = mktmpdir(temp_dir);    
     // read input file
-    coefs = read_input(argv[1]); // coefficients: upper-half u, lower-half v
+    read_config(string(argv[1]) + "/config.in", thr1p, thrnp, M, calc_spectra, savemps);
+    coefs = read_orbitals(string(argv[1]) + "/orbitals.in"); // coefficients: upper-half u, lower-half v
   }
-
   broadcast(world, mps_temp, 0);
+  broadcast(world, thr1p, 0);
+  broadcast(world, thrnp, 0);
+  broadcast(world, M, 0);
   broadcast(world, coefs, 0);
+  broadcast(world, savemps, 0);
   
   int nsites = coefs.Nrows()/2;
   int norbs = nsites;
@@ -189,37 +228,61 @@ int main(int argc, char* argv[]){
   }
 
   if (world.rank() == 0) {
-    compress_on_disk(A, MPS_DIRECTION::Right, M, mps_temp.c_str(), true);  
-    cout << "\nnow calculate entanglement entropy\n";
-    auto tup = Schmidt_on_disk(A, -1, mps_temp.c_str());
+    compress_on_disk(A, MPS_DIRECTION::Right, M, mps_temp.c_str(), true);
 
-    SDArray<1> sc = std::get<0>(tup);
-    Qshapes<Quantum> sq = std::get<1>(tup);
-    auto iter = sc.begin();  
-    map<int, vector<double>> coef;
-    for (int i = 0; i < sq.size(); i++) {
-      int sp = sq[i].gSz();
-      coef[sp];
-      for (auto it_d = iter -> second -> begin(); it_d != iter -> second -> end(); ++it_d) {
-        coef[sp].push_back(-2.*log(*it_d));
+    if (calc_spectra) {
+      cout << "\nnow calculate entanglement entropy\n";
+      auto tup = Schmidt_on_disk(A, -1, mps_temp.c_str());
+
+      SDArray<1> sc = std::get<0>(tup);
+      Qshapes<Quantum> sq = std::get<1>(tup);
+      auto iter = sc.begin();  
+      map<int, vector<double>> coef;
+      for (int i = 0; i < sq.size(); i++) {
+        int sp = sq[i].gSz();
+        coef[sp];
+        for (auto it_d = iter -> second -> begin(); it_d != iter -> second -> end(); ++it_d) {
+          coef[sp].push_back(-2.*log(*it_d));
+        }
+        std::sort(coef[sp].begin(), coef[sp].end());
+        ++iter;    
       }
-      std::sort(coef[sp].begin(), coef[sp].end());
-      ++iter;    
-    }
 
-    cout << "Entanglement Spectra:\n";
-    for (auto it = coef.begin(); it != coef.end(); it++) {
-      cout << "Section S=" << it -> first << endl;
-      for (auto it_d = it -> second.begin(); it_d < it -> second.end(); ++it_d) {
-        cout << *it_d << "\t";
+      ofstream fspec((string(argv[1]) + "/spectra.out").c_str());
+      for (auto it = coef.begin(); it != coef.end(); it++) {
+        fspec << "Section S=" << it -> first << endl;
+        for (auto it_d = it -> second.begin(); it_d < it -> second.end(); ++it_d) {
+          fspec << *it_d << "\t";
+        }
+        fspec << endl;
       }
-      cout << endl;
+      fspec.close();
     }
-
-    boost::filesystem::path to_remove(mps_temp);
-    boost::filesystem::remove_all(to_remove);
+  }
+  
+  world.barrier();
+  boost::filesystem::path mps_tmp_store(mps_temp);
+  if (savemps) {
+    if (world.rank() == 0) {
+      cout << "\nnow save mps files" << endl;
+    }
+    boost::filesystem::path mps_store(string(argv[1]) + "/mps.out");
+    boost::filesystem::create_directory(mps_store);
+    for (int i = 0; i < nsites; ++i) {
+      if (world.rank() == i % world.size()) {
+        string filename = std::to_string(i) + ".mps";
+        boost::filesystem::path p1(mps_temp + "/" + filename);
+        boost::filesystem::path p2(string(argv[1]) + "/mps.out/" + filename);
+        boost::filesystem::copy_file(p1, p2, boost::filesystem::copy_option::overwrite_if_exists);
+      }
+    }
   }
 
+  world.barrier();
+
+  if (world.rank() == 0) {
+    boost::filesystem::remove_all(mps_tmp_store);
+  }
   return 0;
   
   
