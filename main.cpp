@@ -31,7 +31,7 @@ using boost::is_any_of;
 namespace btas { typedef SpinQuantum Quantum; }; // Defined as default quantum number class
 
 const string mps_dir = "/home/boxiao/mps/mps.out";
-const string temp_dir = "/scratch/gpfs/boxiao/MPSTemp";
+const string temp_dir = "/scratch/boxiao/MPSTemp";
 
 using namespace btas;
 using namespace mpsxx;

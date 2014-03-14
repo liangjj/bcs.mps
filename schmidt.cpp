@@ -172,6 +172,9 @@ std::ostream& operator <<(std::ostream& os, const SchmidtBasis& basis) {
   //os << basis.core << endl;
   os << "Active Space (" << basis.nactive() << ") with weights:\n";
   for (int i = 0; i < basis.weight.size(); ++i) {
+    if (i > 0 && i % 6 == 0) {
+      os << endl;
+    }
     os << basis.weight[i] << "  ";
   }
   os << endl;

@@ -37,7 +37,7 @@ LIBS=-lpthread -lmkl_intel_lp64 -lmkl_sequential -lmkl_core $(BOOSTLIB) $(BTASLI
 
 #CC	= gcc
 #CXX	= g++
-CXX = mpic++
+CXX = mpicxx
 CC = mpicc
 
 # -----------------------------------------------------------------------------
@@ -67,15 +67,15 @@ all:
 # -----------------------------------------------------------------------------
 %.o:	%.for makefile
 	@echo; echo "Compiling $(@:.o=.for) ..."
-	$(FF) -c $(FFLAGS) $(SFLAGS) $(@:.o=.for) -o $@
+	$(FF) -c $(@:.o=.for) -o $@ $(FFLAGS) $(SFLAGS)
 
 %.o:	%.c makefile
 	@echo; echo "Compiling $(@:.o=.c) ..."
-	$(CC) -c $(CFLAGS) $(SFLAGS) $(@:.o=.c) -o $@
+	$(CC) -c $(@:.o=.c) -o $@ $(CFLAGS) $(SFLAGS)
 
 %.o:	%.cpp makefile
 	@echo; echo "Compiling $(@:.o=.cpp) ..."
-	$(CXX) -c $(CFLAGS) $(SFLAGS) $(DEFS) $(@:.o=.cpp) -o $@
+	$(CXX) -c $(@:.o=.cpp) -o $@ $(CFLAGS) $(SFLAGS) $(DEFS) 
 
 # -----------------------------------------------------------------------------
 #   Link everything together
