@@ -28,13 +28,13 @@ QSDArray<3, Quantum> CoupledBasis::generate() {
   if (world.rank() == 0) {
     //cout << "qshape = " << A.qshape() << endl;
     //cout << "dshape = " << A.dshape() << endl;
-    cout << "nblock = " << block.size() << endl << endl;
+    cout << "nblock = " << block.size() << endl;
   }
   
   // now generate these blocks
   for (int i = 0; i < block.size(); ++i) {
     if (world.rank() == 0) {
-      cout << "block " << i << endl;
+      cout << "block " << i;
     }
     // get information of each block
     Spin s = (qp[block[i][1]] == -1) ? (Spin::down) : (Spin::up);
@@ -55,6 +55,7 @@ QSDArray<3, Quantum> CoupledBasis::generate() {
       A.reserve(block[i]);
       dense.reference(*(A.find(block[i]) -> second));
       stride = dense.stride();
+      cout << "\t" << "nelements = " << stride[0] << endl;
     }
     broadcast(world, stride, 0);
 
@@ -77,10 +78,11 @@ QSDArray<3, Quantum> CoupledBasis::generate() {
       my_it = my_array.begin();
     }
 
+    Matrix workspace;
     for (size_t j = shift_procs[world.rank()]; j <  shift_procs[world.rank()] + size_procs[world.rank()]; ++j) {
       int idx_l = j / stride[0];
       int idx_r = (j % stride[1]) / stride[2];
-      *my_it = overlap(iter_l.get_config(idx_l), iter_r.get_config(idx_r), s, nl, nr);
+      *my_it = overlap(iter_l.get_config(idx_l), iter_r.get_config(idx_r), s, nl, nr, workspace);
       ++my_it;
     }
 

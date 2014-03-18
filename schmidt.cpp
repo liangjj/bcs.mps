@@ -263,13 +263,16 @@ void CoupledBasis::contract1p() {
   as.Column(2) << lbasis->get_active().Row(1).t();
 }
 
-double CoupledBasis::overlap(const vector<bool>& left, const vector<bool>& right, Spin s, int nl, int nr) const {
+double CoupledBasis::overlap(const vector<bool>& left, const vector<bool>& right, Spin s, int nl, int nr, Matrix& mat) const {
   // we assume the number of orbitals are the same, to enhance performance
-  // if the numbers are different, the overlap is 0, but we will get error here
+  // if the numbers are different, the overlap is 0, but we will get error from this function
   int ns = 2-int(s)*2;
-  Matrix mat(nl+lc, nl+lc);
-  if (cc.Storage()) { // core-core part
-    mat.SubMatrix(nl+1, nl+lc, nl+lc-rc+1 , nl+lc) = cc;
+  if (mat.Storage() == 0) {
+    cout << "hello" << endl;
+    mat.ReSize(nl+lc, nl+lc);
+    if (cc.Storage()) { // core-core part
+      mat.SubMatrix(nl+1, nl+lc, nl+lc-rc+1 , nl+lc) = cc;
+    }
   }
   if (nl) { // active-core part
     int count = 0;
@@ -314,7 +317,6 @@ double CoupledBasis::overlap(const vector<bool>& left, const vector<bool>& right
 
   int sign = ((nr+rc)%2 == 0) ? 1:-1;
   double det = (nl+lc == 0) ? 1.: mat.Determinant();
-  
   return sign * det;
 }
 

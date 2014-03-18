@@ -153,7 +153,7 @@ private:
   // compute matrix elements: given active space bits left/right, and the onsite state
   // calculat overlap
   // sign convention : <l_vac|<l_core|<l_act|s_i>|r_act>r_core>|r_vac>, resulted basis becomes |s_1,s_2,...>
-  double overlap(const vector<bool>&, const vector<bool>&, Spin, int, int) const;
+  double overlap(const vector<bool>&, const vector<bool>&, Spin, int, int, Matrix&) const;
 
 public:
   // constructor
