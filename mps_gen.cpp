@@ -28,11 +28,14 @@ QSDArray<3, Quantum> CoupledBasis::generate() {
   if (world.rank() == 0) {
     //cout << "qshape = " << A.qshape() << endl;
     //cout << "dshape = " << A.dshape() << endl;
-    cout << "nblock = " << block.size() << endl << endl;;
+    cout << "nblock = " << block.size() << endl << endl;
   }
   
   // now generate these blocks
   for (int i = 0; i < block.size(); ++i) {
+    if (world.rank() == 0) {
+      cout << "block " << i << endl;
+    }
     // get information of each block
     Spin s = (qp[block[i][1]] == -1) ? (Spin::down) : (Spin::up);
     int nl = nsites - ql[block[i][0]] - lc;
@@ -93,5 +96,6 @@ QSDArray<3, Quantum> CoupledBasis::generate() {
       MPI_Wait(&req, MPI_STATUS_IGNORE);
     }
   }
+  cout << endl;
   return std::move(A);
 }
