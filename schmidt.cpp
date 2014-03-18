@@ -268,7 +268,6 @@ double CoupledBasis::overlap(const vector<bool>& left, const vector<bool>& right
   // if the numbers are different, the overlap is 0, but we will get error from this function
   int ns = 2-int(s)*2;
   if (mat.Storage() == 0) {
-    cout << "hello" << endl;
     mat.ReSize(nl+lc, nl+lc);
     if (cc.Storage()) { // core-core part
       mat.SubMatrix(nl+1, nl+lc, nl+lc-rc+1 , nl+lc) = cc;
