@@ -55,7 +55,7 @@ QSDArray<3, Quantum> CoupledBasis::generate() {
       A.reserve(block[i]);
       dense.reference(*(A.find(block[i]) -> second));
       stride = dense.stride();
-      cout << "\t" << "nelements = " << stride[0] << endl;
+      cout << "\t" << "nelements = " << dense.size() << endl;
     }
     broadcast(world, stride, 0);
 
@@ -85,7 +85,6 @@ QSDArray<3, Quantum> CoupledBasis::generate() {
       *my_it = overlap(iter_l.get_config(idx_l), iter_r.get_config(idx_r), s, nl, nr, workspace);
       ++my_it;
     }
-
     if (world.rank() == 0) {
       MPI_Request req[world.size()-1];
       for (int j = 1; j < world.size(); ++j) {
@@ -97,7 +96,10 @@ QSDArray<3, Quantum> CoupledBasis::generate() {
       MPI_Isend(my_array.data(), size_procs[world.rank()], MPI_DOUBLE, 0, world.rank(), world, &req);
       MPI_Wait(&req, MPI_STATUS_IGNORE);
     }
+
   }
-  cout << endl;
+  if (world.rank() == 0) {
+    cout << endl;
+  }
   return std::move(A);
 }
